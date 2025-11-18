@@ -1,0 +1,16 @@
+{
+    "navigation": {
+        "timeline": "Zeitleiste"
+    },
+    "timeline": {
+        "title": "Veröffentlichungshistorie",
+        "empty": "Keine Veröffentlichungen gefunden.",
+        "released": "Veröffentlicht am",
+        "cta": "Mehr Details",
+        "loading": "Lade Veröffentlichungen…",
+        "filter": {
+            "label": "Software-Fokus",
+            "all": "Alle Produkte"
+        }
+    }
+}

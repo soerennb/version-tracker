@@ -1,0 +1,16 @@
+{
+    "navigation": {
+        "timeline": "Timeline"
+    },
+    "timeline": {
+        "title": "Release Timeline",
+        "empty": "No releases found.",
+        "released": "Released on",
+        "cta": "View details",
+        "loading": "Loading releases…",
+        "filter": {
+            "label": "Software focus",
+            "all": "All products"
+        }
+    }
+}
