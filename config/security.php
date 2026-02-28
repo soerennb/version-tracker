@@ -1,7 +1,7 @@
 <?php
 
 $trustedHosts = array_values(array_filter(array_map(
-    static fn (string $host): string => trim($host),
+    static fn (string $trustedHostPattern): string => trim($trustedHostPattern),
     explode(',', (string) env('TRUSTED_HOSTS', ''))
 )));
 

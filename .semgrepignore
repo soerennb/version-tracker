@@ -1,0 +1,8 @@
+# Built frontend assets (vendor code, not authored in this repo)
+public/js/filament/**
+public/css/filament/**
+
+# Dependencies and generated artifacts
+vendor/**
+node_modules/**
+storage/**
