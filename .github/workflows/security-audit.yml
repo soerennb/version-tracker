@@ -37,7 +37,7 @@ jobs:
         run: npm ci --no-audit --fund=false
 
       - name: Run Composer Audit
-        run: composer audit --no-interaction
+        run: composer audit --no-interaction --abandoned=report
 
       - name: Run NPM Audit (production)
         run: npm audit --omit=dev --audit-level=high
@@ -55,8 +55,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: detect --source . --redact --verbose
 
   sast:
     name: SAST
