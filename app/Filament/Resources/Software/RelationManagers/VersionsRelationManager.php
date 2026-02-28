@@ -2,15 +2,12 @@
 
 namespace App\Filament\Resources\Software\RelationManagers;
 
-use App\Enums\ApprovalStatus;
-use App\Enums\VersionStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -28,14 +25,6 @@ class VersionsRelationManager extends RelationManager
                 TextInput::make('version_number')
                     ->required(),
                 DatePicker::make('release_date')
-                    ->required(),
-                Select::make('status')
-                    ->options(VersionStatus::class)
-                    ->default('draft')
-                    ->required(),
-                Select::make('approval_status')
-                    ->options(ApprovalStatus::class)
-                    ->default('pending')
                     ->required(),
                 DatePicker::make('eol_date'),
                 DatePicker::make('lts_date'),

@@ -17,8 +17,11 @@ class StoreFileAttachmentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $allowedExtensions = implode(',', config('security.upload_allowed_extensions', ['pdf']));
+        $maxKilobytes = (int) config('security.upload_max_kb', 10240);
+
         return [
-            'file' => ['required', 'file', 'max:10240'],
+            'file' => ['required', 'file', 'max:'.$maxKilobytes, 'mimes:'.$allowedExtensions],
         ];
     }
 }

@@ -10,6 +10,7 @@ use App\Models\FileAttachment;
 use App\Models\Version;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class FileAttachmentController extends Controller
 {
@@ -31,7 +32,7 @@ class FileAttachmentController extends Controller
         $path = $uploadedFile->store("attachments/{$version->id}", $disk);
 
         $attachment = $version->fileAttachments()->create([
-            'filename' => $uploadedFile->getClientOriginalName(),
+            'filename' => $this->sanitizeFilename($uploadedFile->getClientOriginalName()),
             'file_path' => $path,
             'mime_type' => $uploadedFile->getClientMimeType(),
             'size' => $uploadedFile->getSize(),
@@ -63,7 +64,7 @@ class FileAttachmentController extends Controller
             $path = $uploadedFile->store("attachments/{$version->id}", $disk);
 
             $fileAttachment->update([
-                'filename' => $uploadedFile->getClientOriginalName(),
+                'filename' => $this->sanitizeFilename($uploadedFile->getClientOriginalName()),
                 'file_path' => $path,
                 'mime_type' => $uploadedFile->getClientMimeType(),
                 'size' => $uploadedFile->getSize(),
@@ -88,5 +89,16 @@ class FileAttachmentController extends Controller
     protected function ensureRelationship(Version $version, FileAttachment $attachment): void
     {
         abort_if($attachment->version_id !== $version->id, 404);
+    }
+
+    protected function sanitizeFilename(string $originalName): string
+    {
+        $basename = pathinfo($originalName, PATHINFO_FILENAME);
+        $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+
+        $safeBase = preg_replace('/[^A-Za-z0-9._ -]/', '-', $basename) ?: 'file';
+        $safeBase = trim((string) Str::of($safeBase)->squish()->limit(100, ''));
+
+        return $extension !== '' ? $safeBase.'.'.$extension : $safeBase;
     }
 }

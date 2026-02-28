@@ -10,12 +10,12 @@ class VersionPolicy
 {
     public function viewAny(?User $user): bool
     {
-        return true;
+        return $user?->can('view_versions') ?? false;
     }
 
     public function view(?User $user, Version $version): bool
     {
-        return true;
+        return $user?->can('view_versions') ?? false;
     }
 
     public function create(User $user): bool

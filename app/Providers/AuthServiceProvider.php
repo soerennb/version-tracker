@@ -41,35 +41,15 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        $abilities = [
-            'create_software',
-            'edit_software',
-            'delete_software',
-            'manage_dependencies',
-            'create_versions',
-            'edit_versions',
-            'delete_versions',
-            'approve_versions',
-            'publish_versions',
-            'create_content',
-            'edit_content',
-            'delete_content',
-            'upload_files',
-            'edit_files',
-            'delete_files',
-            'download_files',
-            'view_audit_logs',
-            'export_data',
-            'view_vulnerabilities',
-            'create_vulnerabilities',
-            'edit_vulnerabilities',
-            'delete_vulnerabilities',
-        ];
+        Gate::before(function (User $user): ?bool {
+            return $user->isAdmin() ? true : null;
+        });
+
+        $abilities = config('authorization.abilities', []);
 
         foreach ($abilities as $ability) {
-            Gate::define($ability, function (User $user) {
-                // Placeholder for future role/permission checks.
-                return true;
+            Gate::define($ability, function (User $user) use ($ability): bool {
+                return $user->hasAbility($ability);
             });
         }
     }

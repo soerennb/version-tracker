@@ -2,15 +2,19 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +25,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'abilities',
     ];
 
     /**
@@ -43,7 +49,40 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
+            'abilities' => 'array',
         ];
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->resolveRole() !== UserRole::VIEWER;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->resolveRole() === UserRole::ADMIN;
+    }
+
+    public function hasAbility(string $ability): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $roleAbilities = config('authorization.role_abilities.'.$this->resolveRole()->value, []);
+        if (in_array('*', $roleAbilities, true) || in_array($ability, $roleAbilities, true)) {
+            return true;
+        }
+
+        $customAbilities = is_array($this->abilities) ? $this->abilities : [];
+
+        return in_array($ability, $customAbilities, true);
+    }
+
+    protected function resolveRole(): UserRole
+    {
+        return $this->role instanceof UserRole ? $this->role : UserRole::VIEWER;
     }
 
     public function createdSoftware(): HasMany

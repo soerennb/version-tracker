@@ -9,12 +9,12 @@ class SoftwarePolicy
 {
     public function viewAny(?User $user): bool
     {
-        return true;
+        return $user?->can('view_software') ?? false;
     }
 
     public function view(?User $user, Software $software): bool
     {
-        return true;
+        return $user?->can('view_software') ?? false;
     }
 
     public function create(User $user): bool

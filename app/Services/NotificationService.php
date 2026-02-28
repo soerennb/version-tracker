@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Models\Version;
 use App\Models\Vulnerability;
@@ -28,7 +29,9 @@ class NotificationService
 
     protected function adminRecipients(): Collection
     {
-        // Placeholder: In future, filter specifically assigned security/admin roles.
-        return User::whereNotNull('email')->get();
+        return User::query()
+            ->where('role', UserRole::ADMIN->value)
+            ->whereNotNull('email')
+            ->get();
     }
 }

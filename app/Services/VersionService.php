@@ -17,7 +17,14 @@ class VersionService
      */
     public function create(array $data): Version
     {
+        unset($data['status'], $data['approval_status']);
+
         $version = Version::create($data);
+
+        $version->forceFill([
+            'status' => VersionStatus::DRAFT,
+            'approval_status' => ApprovalStatus::PENDING,
+        ])->save();
 
         $this->syncSoftwareMetadata($version);
 
@@ -29,6 +36,8 @@ class VersionService
      */
     public function update(Version $version, array $data): Version
     {
+        unset($data['status'], $data['approval_status']);
+
         $version->fill($data);
         $version->save();
 

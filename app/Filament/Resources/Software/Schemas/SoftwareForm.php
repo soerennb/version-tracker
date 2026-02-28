@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Software\Schemas;
 
 use App\Enums\SoftwareStatus;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -32,11 +31,6 @@ class SoftwareForm
                     ->options($statusOptions)
                     ->default(SoftwareStatus::ACTIVE->value)
                     ->required(),
-                TextInput::make('current_version')
-                    ->label(__('filament.software.fields.current_version'))
-                    ->maxLength(50),
-                DatePicker::make('last_release_date')
-                    ->label(__('filament.software.fields.last_release_date')),
                 TextInput::make('license_type')
                     ->label(__('filament.software.fields.license_type'))
                     ->maxLength(255),

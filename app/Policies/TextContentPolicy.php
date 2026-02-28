@@ -9,12 +9,12 @@ class TextContentPolicy
 {
     public function viewAny(?User $user): bool
     {
-        return true;
+        return $user?->can('view_content') ?? false;
     }
 
     public function view(?User $user, TextContent $textContent): bool
     {
-        return true;
+        return $user?->can('view_content') ?? false;
     }
 
     public function create(User $user): bool

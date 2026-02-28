@@ -10,11 +10,11 @@ use App\Http\Controllers\Api\VersionController;
 use App\Http\Controllers\Public\TimelineController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('public')->group(function () {
+Route::prefix('public')->middleware('throttle:api')->group(function () {
     Route::get('timeline', [TimelineController::class, 'index']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['throttle:api', 'auth:sanctum'])->group(function () {
     Route::apiResource('softwares', SoftwareController::class);
     Route::get('softwares/{software}/versions', [SoftwareController::class, 'versions']);
 

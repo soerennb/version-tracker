@@ -29,8 +29,6 @@ class StoreSoftwareRequest extends FormRequest
             'name' => ['required', 'string', 'max:255', 'unique:software,name'],
             'description' => ['nullable', 'string'],
             'status' => ['required', Rule::enum(SoftwareStatus::class)],
-            'current_version' => ['nullable', 'string', 'max:50'],
-            'last_release_date' => ['nullable', 'date'],
             'license_type' => ['nullable', 'string', 'max:255'],
             'compliance_status' => ['required', 'string', 'max:255'],
             'github_repo_url' => ['nullable', 'url', 'max:255'],

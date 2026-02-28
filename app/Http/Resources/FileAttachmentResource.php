@@ -16,7 +16,7 @@ class FileAttachmentResource extends JsonResource
             'id' => $this->id,
             'version_id' => $this->version_id,
             'filename' => $this->filename,
-            'file_path' => $this->file_path,
+            'file_extension' => pathinfo((string) $this->filename, PATHINFO_EXTENSION),
             'mime_type' => $this->mime_type,
             'size' => $this->size,
             'created_at' => $this->created_at?->toISOString(),

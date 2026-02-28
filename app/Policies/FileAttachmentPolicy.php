@@ -10,7 +10,7 @@ class FileAttachmentPolicy
 {
     public function viewAny(?User $user): bool
     {
-        return true;
+        return $user?->can('download_files') ?? false;
     }
 
     public function view(?User $user, FileAttachment $fileAttachment): bool
