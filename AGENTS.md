@@ -9,15 +9,15 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
 - php - 8.3.24
-- filament/filament (FILAMENT) - v4
-- laravel/framework (LARAVEL) - v12
+- filament/filament (FILAMENT) - v5
+- laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
 - laravel/sanctum (SANCTUM) - v4
-- livewire/livewire (LIVEWIRE) - v3
+- livewire/livewire (LIVEWIRE) - v4
 - laravel/mcp (MCP) - v0
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
-- phpunit/phpunit (PHPUNIT) - v11
+- phpunit/phpunit (PHPUNIT) - v12
 
 ## Conventions
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, naming.
@@ -156,14 +156,14 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
 
-=== laravel/v12 rules ===
+=== laravel/v13 rules ===
 
-## Laravel 12
+## Laravel 13
 
 - Use the `search-docs` tool to get version specific documentation.
 - Since Laravel 11, Laravel has a new streamlined file structure which this project uses.
 
-### Laravel 12 Structure
+### Laravel 13 Structure
 - No middleware files in `app/Http/Middleware/`.
 - `bootstrap/app.php` is the file to register middleware, exceptions, and routing files.
 - `bootstrap/providers.php` contains application specific service providers.
@@ -225,40 +225,26 @@ protected function isAccessible(User $user, ?string $path = null): bool
     </code-snippet>
 
 
-=== livewire/v3 rules ===
+=== livewire/v4 rules ===
 
-## Livewire 3
+## Livewire 4
 
-### Key Changes From Livewire 2
-- These things changed in Livewire 2, but may not have been updated in this application. Verify this application's setup to ensure you conform with application conventions.
-    - Use `wire:model.live` for real-time updates, `wire:model` is now deferred by default.
-    - Components now use the `App\Livewire` namespace (not `App\Http\Livewire`).
-    - Use `$this->dispatch()` to dispatch events (not `emit` or `dispatchBrowserEvent`).
-    - Use the `components.layouts.app` view as the typical layout path (not `layouts.app`).
+### Component And API Conventions
+- Verify Livewire code against the v4 documentation before making assumptions based on older v2/v3 behavior.
+- Use the `App\Livewire` namespace for class-based components unless the existing codebase is intentionally using one of Livewire 4's newer component formats.
+- Use `$this->dispatch()` for server-side event dispatching.
+- When using `wire:model` modifiers, remember Livewire 4 changed some client-side sync timing semantics; prefer explicit modifiers such as `wire:model.live` when immediate synchronization is required.
 
-### New Directives
-- `wire:show`, `wire:transition`, `wire:cloak`, `wire:offline`, `wire:target` are available for use. Use the documentation to find usage examples.
+### Newer Livewire 4 Capabilities
+- Livewire 4 supports additional component formats, async actions, islands, and newer directives such as `wire:intersect`, `wire:ref`, and `wire:sort`.
+- Use these capabilities only when they fit the existing codebase and verify exact syntax with the `search-docs` tool.
 
-### Alpine
-- Alpine is now included with Livewire, don't manually include Alpine.js.
-- Plugins included with Alpine: persist, intersect, collapse, and focus.
+### Alpine And JavaScript
+- Alpine is included with Livewire; do not manually add a separate Alpine bundle.
+- Livewire 4 deprecates parts of the older JavaScript hook API in favor of interceptors. If you need custom client-side hooks or request interception, verify the current v4 pattern in the docs before implementing it.
 
-### Lifecycle Hooks
-- You can listen for `livewire:init` to hook into Livewire initialization, and `fail.status === 419` for the page expiring:
-
-<code-snippet name="livewire:load example" lang="js">
-document.addEventListener('livewire:init', function () {
-    Livewire.hook('request', ({ fail }) => {
-        if (fail && fail.status === 419) {
-            alert('Your session expired');
-        }
-    });
-
-    Livewire.hook('message.failed', (message, component) => {
-        console.error(message);
-    });
-});
-</code-snippet>
+### Infrastructure Notes
+- Livewire 4 assets and endpoints now use a hash-based `/livewire-{hash}/...` prefix. If you touch middleware, proxies, or route customizations around Livewire endpoints, preserve that hashed path format.
 
 
 === pint/core rules ===

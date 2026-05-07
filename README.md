@@ -1,6 +1,6 @@
 # VersionTracker
 
-VersionTracker is a Laravel 12 application that centralizes software versions, releases, and security information. The project provides a modern Filament 4 admin panel (incl. Analytics Dashboard) as well as a public Vue frontend with timeline visualization.
+VersionTracker is a Laravel 13 application that centralizes software versions, releases, and security information. The project provides a modern Filament 5 admin panel (incl. Analytics Dashboard) as well as a public Vue frontend with timeline visualization.
 
 ## Features
 
@@ -11,9 +11,9 @@ VersionTracker is a Laravel 12 application that centralizes software versions, r
 
 ## Stack
 
-- PHP 8.3 · Laravel 12 · Livewire 3 · Filament 4
+- PHP 8.3 · Laravel 13 · Livewire 4 · Filament 5
 - MySQL/PostgreSQL/SQLite (Default: SQLite)
-- Node 20+ · Vite · Vue 3 · Tailwind CSS 4
+- Node 20+ · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
 
 ## Requirements
 
@@ -78,6 +78,7 @@ VersionTracker is a Laravel 12 application that centralizes software versions, r
 - **Tests**: `php artisan test`
 - **Vite Dev Server**: `npm run dev`
 - **Build**: `npm run build`
+- **Local App Stack**: `composer run dev`
 
 ## Deployment Notes
 
