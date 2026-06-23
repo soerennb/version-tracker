@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Versions;
 use App\Filament\Resources\Versions\Pages\CreateVersion;
 use App\Filament\Resources\Versions\Pages\EditVersion;
 use App\Filament\Resources\Versions\Pages\ListVersions;
+use App\Filament\Resources\Versions\Pages\ReleaseNotesEditor;
 use App\Filament\Resources\Versions\RelationManagers\FileAttachmentsRelationManager;
 use App\Filament\Resources\Versions\RelationManagers\TextContentsRelationManager;
 use App\Filament\Resources\Versions\RelationManagers\VulnerabilitiesRelationManager;
@@ -16,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class VersionResource extends Resource
 {
@@ -45,6 +47,19 @@ class VersionResource extends Resource
         return VersionsTable::configure($table);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'fileAttachments',
+                'software.dependenciesOutgoing.dependsOnSoftware',
+                'software.dependenciesOutgoing.minVersion',
+                'software.dependenciesOutgoing.maxVersion',
+                'textContents',
+                'vulnerabilities',
+            ]);
+    }
+
     public static function getRelations(): array
     {
         return [
@@ -60,6 +75,7 @@ class VersionResource extends Resource
             'index' => ListVersions::route('/'),
             'create' => CreateVersion::route('/create'),
             'edit' => EditVersion::route('/{record}/edit'),
+            'release-notes' => ReleaseNotesEditor::route('/{record}/release-notes'),
         ];
     }
 }

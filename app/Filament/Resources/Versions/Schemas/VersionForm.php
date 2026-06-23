@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Versions\Schemas;
 
+use App\Enums\SupportStatus;
+use App\Helpers\VersionHelper;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -11,6 +13,10 @@ class VersionForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $supportOptions = collect(SupportStatus::cases())
+            ->mapWithKeys(fn (SupportStatus $status) => [$status->value => $status->label()])
+            ->all();
+
         return $schema
             ->components([
                 Select::make('software_id')
@@ -21,8 +27,8 @@ class VersionForm
                 TextInput::make('version_number')
                     ->label(__('filament.versions.fields.version_number'))
                     ->required()
-                    ->regex('/^\d+(\.\d+){0,2}$/')
-                    ->helperText('e.g. 1.2.3'),
+                    ->regex(VersionHelper::semverRegex())
+                    ->helperText('e.g. 1.2.3, 1.2.3-rc.1, 1.2.3+build.5'),
                 DatePicker::make('release_date')
                     ->label(__('filament.versions.fields.release_date'))
                     ->required(),
@@ -30,9 +36,9 @@ class VersionForm
                     ->label(__('filament.versions.fields.eol_date')),
                 DatePicker::make('lts_date')
                     ->label(__('filament.versions.fields.lts_date')),
-                TextInput::make('support_status')
+                Select::make('support_status')
                     ->label(__('filament.versions.fields.support_status'))
-                    ->maxLength(255),
+                    ->options($supportOptions),
             ]);
     }
 }

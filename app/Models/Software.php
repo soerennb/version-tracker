@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\ComplianceStatus;
 use App\Enums\SoftwareStatus;
+use Database\Factories\SoftwareFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Software extends Model
 {
-    /** @use HasFactory<\Database\Factories\SoftwareFactory> */
+    /** @use HasFactory<SoftwareFactory> */
     use HasFactory;
 
     use SoftDeletes;
@@ -40,6 +42,7 @@ class Software extends Model
     {
         return [
             'status' => SoftwareStatus::class,
+            'compliance_status' => ComplianceStatus::class,
             'last_release_date' => 'date',
             'deleted_at' => 'datetime',
         ];

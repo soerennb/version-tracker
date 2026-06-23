@@ -1,142 +1,80 @@
 <template>
-    <section>
-        <header class="mb-6">
-            <h1 class="text-2xl font-semibold text-slate-800">{{ $t('timeline.title') }}</h1>
+    <section class="mx-auto max-w-6xl">
+        <header class="border-b border-slate-200 pb-6">
+            <h1 class="text-3xl font-semibold text-slate-950">{{ $t('timeline.title') }}</h1>
         </header>
 
-        <div v-if="softwareOptions.length" class="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $t('timeline.filter.label') }}</span>
-            <div class="flex flex-wrap gap-2">
-                <button
-                    type="button"
-                    class="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide transition"
-                    :class="isActiveSoftware(null) ? 'bg-slate-900 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                    @click="handleSoftwareSelect(null)"
-                >
-                    {{ $t('timeline.filter.all') }}
-                </button>
-                <button
-                    v-for="software in softwareOptions"
-                    :key="software.id"
-                    type="button"
-                    class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition"
-                    :class="isActiveSoftware(software.id)
-                        ? 'border-transparent bg-indigo-600 text-white shadow'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
-                    @click="handleSoftwareSelect(software.id)"
-                >
-                    <span class="h-2 w-2 rounded-full bg-current"></span>
-                    {{ software.name }}
-                </button>
-            </div>
-        </div>
+        <form class="grid gap-4 border-b border-slate-200 py-5 md:grid-cols-2 lg:grid-cols-6" @submit.prevent="applyFilters">
+            <label class="md:col-span-2 lg:col-span-2"><span class="block text-xs font-medium text-slate-600">{{ $t('timeline.filter.search') }}</span><input v-model="filters.q" type="search" class="mt-1 h-10 w-full border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-600" :placeholder="$t('timeline.filter.searchPlaceholder')" @input="scheduleFilters"></label>
+            <label><span class="block text-xs font-medium text-slate-600">{{ $t('timeline.filter.product') }}</span><select v-model="filters.software" class="mt-1 h-10 w-full border border-slate-300 bg-white px-2 text-sm" @change="applyFilters"><option value="">{{ $t('timeline.filter.all') }}</option><option v-for="software in softwareOptions" :key="software.id" :value="String(software.id)">{{ software.name }}</option></select></label>
+            <label><span class="block text-xs font-medium text-slate-600">{{ $t('timeline.filter.support') }}</span><select v-model="filters.support" class="mt-1 h-10 w-full border border-slate-300 bg-white px-2 text-sm" @change="applyFilters"><option value="">{{ $t('timeline.filter.any') }}</option><option v-for="status in supportStatuses" :key="status" :value="status">{{ $t(`product.supportStatus.${status}`) }}</option></select></label>
+            <label><span class="block text-xs font-medium text-slate-600">{{ $t('timeline.filter.security') }}</span><select v-model="filters.security" class="mt-1 h-10 w-full border border-slate-300 bg-white px-2 text-sm" @change="applyFilters"><option value="">{{ $t('timeline.filter.any') }}</option><option value="clear">{{ $t('product.clear') }}</option><option value="attention">{{ $t('product.attention') }}</option></select></label>
+            <button v-if="hasFilters" type="button" class="self-end text-left text-sm font-semibold text-slate-600 hover:text-slate-950 lg:text-center" @click="clearFilters">{{ $t('timeline.filter.clear') }}</button>
+            <label><span class="block text-xs font-medium text-slate-600">{{ $t('timeline.filter.from') }}</span><input v-model="filters.date_from" type="date" class="mt-1 h-10 w-full border border-slate-300 bg-white px-2 text-sm" @change="applyFilters"></label>
+            <label><span class="block text-xs font-medium text-slate-600">{{ $t('timeline.filter.to') }}</span><input v-model="filters.date_to" type="date" class="mt-1 h-10 w-full border border-slate-300 bg-white px-2 text-sm" @change="applyFilters"></label>
+        </form>
 
-        <div v-if="loading" class="mt-6 text-slate-500 text-sm">
-            {{ $t('timeline.loading') }}
-        </div>
+        <p v-if="loading" class="py-8 text-sm text-slate-500">{{ $t('timeline.loading') }}</p>
+        <p v-else-if="timeline.length === 0" class="py-8 text-sm text-slate-500">{{ $t('timeline.empty') }}</p>
 
-        <div v-else-if="timeline.length === 0" class="mt-6 text-slate-500 text-sm">
-            {{ $t('timeline.empty') }}
-        </div>
-
-        <div v-else class="relative mt-8 pl-6">
-            <div class="absolute left-2 top-0 bottom-0 w-px bg-slate-200"></div>
-            <ol class="space-y-8">
-                <li
-                    v-for="item in timeline"
-                    :key="item.id"
-                    class="relative flex gap-4"
-                >
-                    <div class="relative flex flex-col items-center">
-                        <span class="relative flex h-3 w-3">
-                            <span :class="['absolute inline-flex h-full w-full animate-ping rounded-full opacity-40', colorClassFor(item)]"></span>
-                            <span :class="['relative inline-flex h-3 w-3 rounded-full border-2 border-white', colorClassFor(item)]"></span>
-                        </span>
-                    </div>
-                    <div class="flex-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                            <span class="font-semibold text-slate-700">{{ item.software }}</span>
-                            <span>{{ $t('timeline.released') }} {{ item.release_date }}</span>
-                        </div>
-                        <h2 class="mt-2 text-lg font-semibold text-slate-900">
-                            {{ item.version }}
-                            <span v-if="item.headline" class="text-slate-500">— {{ item.headline }}</span>
-                        </h2>
-                        <p v-if="item.summary" class="mt-2 text-sm text-slate-600">
-                            {{ item.summary }}
-                        </p>
-                    </div>
-                </li>
-            </ol>
-        </div>
+        <ol v-else class="divide-y divide-slate-200">
+            <li v-for="item in timeline" :key="item.id" class="grid gap-3 py-6 md:grid-cols-[9rem_1fr_10rem]">
+                <div><div class="text-xs text-slate-500">{{ formatDate(item.release_date) }}</div><div class="mt-1 text-sm font-semibold text-slate-800">{{ item.software }}</div></div>
+                <div><RouterLink :to="`/releases/${item.id}`" class="font-mono text-lg font-semibold text-slate-950 hover:text-emerald-700">{{ item.version }}</RouterLink><h2 v-if="item.headline" class="mt-1 text-sm font-semibold text-slate-800">{{ item.headline }}</h2><p v-if="item.summary" class="mt-1 text-sm leading-6 text-slate-600">{{ item.summary }}</p></div>
+                <div class="text-xs md:text-right"><div class="font-medium text-slate-700">{{ supportLabel(item.support_status) }}</div><div class="mt-1" :class="item.open_vulnerabilities ? 'text-red-700' : 'text-emerald-700'">{{ item.open_vulnerabilities }} {{ $t('products.openFindings').toLowerCase() }}</div></div>
+            </li>
+        </ol>
     </section>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 
+const route = useRoute();
+const router = useRouter();
+const { locale, t } = useI18n();
 const timeline = ref([]);
 const loading = ref(true);
 const softwareOptions = ref([]);
-const activeSoftware = ref(null);
-const softwareColors = ref({});
+const supportStatuses = ['supported', 'maintenance', 'deprecated', 'eol'];
+const filterKeys = ['q', 'software', 'date_from', 'date_to', 'support', 'security'];
+const filters = reactive(Object.fromEntries(filterKeys.map((key) => [key, String(route.query[key] ?? '')])));
+const hasFilters = computed(() => filterKeys.some((key) => filters[key]));
+let debounceTimer;
 
-const colorPalette = ['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500', 'bg-rose-500', 'bg-sky-500', 'bg-purple-500'];
+const queryFromFilters = () => Object.fromEntries(filterKeys.filter((key) => filters[key]).map((key) => [key, filters[key]]));
+const formatDate = (value) => value ? new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`)) : '–';
+const supportLabel = (status) => t(`product.supportStatus.${status ?? 'unknown'}`);
 
-const assignColors = (items) => {
-    const map = {};
-    items.forEach((item) => {
-        const key = item.software_id ?? `unknown-${item.id}`;
-        if (!map[key]) {
-            const index = Object.keys(map).length % colorPalette.length;
-            map[key] = colorPalette[index];
-        }
-    });
-
-    softwareColors.value = map;
-};
-
-const buildQuery = (softwareId) => {
-    const params = new URLSearchParams();
-    if (softwareId) {
-        params.set('software', softwareId);
-    }
-    const query = params.toString();
-    return query ? `?${query}` : '';
-};
-
-const loadTimeline = async (softwareId = null) => {
+const loadTimeline = async () => {
     loading.value = true;
-
     try {
-        const response = await fetch(`/api/public/timeline${buildQuery(softwareId)}`);
-        const data = await response.json();
-        timeline.value = data.data ?? [];
-        softwareOptions.value = data.filters?.software ?? [];
-        activeSoftware.value = data.filters?.active ?? null;
-        assignColors(timeline.value);
-    } catch (error) {
-        console.error('Failed to load timeline', error);
-        timeline.value = [];
+        const params = new URLSearchParams(queryFromFilters());
+        const response = await fetch(`/api/public/timeline?${params}`);
+        const payload = await response.json();
+        timeline.value = response.ok ? payload.data ?? [] : [];
+        softwareOptions.value = payload.filters?.software ?? softwareOptions.value;
     } finally {
         loading.value = false;
     }
 };
 
-const handleSoftwareSelect = (softwareId) => {
-    if ((softwareId ?? null) === (activeSoftware.value ?? null)) {
-        return;
-    }
-
-    loadTimeline(softwareId);
+const applyFilters = async () => {
+    clearTimeout(debounceTimer);
+    await router.replace({ query: queryFromFilters() });
+    await loadTimeline();
+};
+const scheduleFilters = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(applyFilters, 300);
+};
+const clearFilters = () => {
+    filterKeys.forEach((key) => { filters[key] = ''; });
+    applyFilters();
 };
 
-const isActiveSoftware = (softwareId) => (activeSoftware.value ?? null) === (softwareId ?? null);
-
-const colorClassFor = (item) => {
-    const key = item.software_id ?? `unknown-${item.id}`;
-    return softwareColors.value[key] ?? 'bg-slate-400';
-};
-
-onMounted(() => loadTimeline());
+onMounted(loadTimeline);
+onBeforeUnmount(() => clearTimeout(debounceTimer));
 </script>

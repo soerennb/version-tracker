@@ -15,14 +15,23 @@ class SoftwareDependenciesTable
         return $table
             ->columns([
                 TextColumn::make('software.name')
+                    ->label(__('filament.versions.fields.software'))
                     ->searchable(),
                 TextColumn::make('dependsOnSoftware.name')
+                    ->label(__('filament.navigation.dependencies'))
                     ->searchable(),
-                TextColumn::make('minVersion.id')
+                TextColumn::make('appliesToVersion.version_number')
+                    ->label(__('dependencies.fields.applies_to_version'))
+                    ->placeholder(__('dependencies.labels.all_releases')),
+                TextColumn::make('minVersion.version_number')
+                    ->label(__('dependencies.fields.min_version'))
                     ->searchable(),
-                TextColumn::make('maxVersion.id')
+                TextColumn::make('maxVersion.version_number')
+                    ->label(__('dependencies.fields.max_version'))
                     ->searchable(),
                 TextColumn::make('dependency_type')
+                    ->label(__('dependencies.fields.type'))
+                    ->badge()
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\ComplianceStatus;
 use App\Enums\Language;
 use App\Enums\SoftwareStatus;
 use App\Enums\VersionStatus;
@@ -35,7 +36,7 @@ class DemoDataSeeder extends Seeder
                 'created_by' => $owner->id,
                 'updated_by' => $owner->id,
                 'license_type' => 'Proprietary',
-                'compliance_status' => 'compliant',
+                'compliance_status' => ComplianceStatus::COMPLIANT,
                 'github_repo_url' => 'https://github.com/example/aurora',
             ]
         );

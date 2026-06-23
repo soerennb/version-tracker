@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\AuditLogFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class AuditLog extends Model
 {
-    /** @use HasFactory<\Database\Factories\AuditLogFactory> */
+    /** @use HasFactory<AuditLogFactory> */
     use HasFactory;
 
     /**
@@ -63,6 +65,37 @@ class AuditLog extends Model
     public function hasAuditChanges(): bool
     {
         return ! empty($this->old_values) || ! empty($this->new_values);
+    }
+
+    public function getModelLabelAttribute(): string
+    {
+        $model = class_basename($this->model_type);
+        $translation = __("filament.audit.models.{$model}");
+
+        return $translation === "filament.audit.models.{$model}" ? Str::headline($model) : $translation;
+    }
+
+    public function getActionLabelAttribute(): string
+    {
+        $translation = __("filament.audit.actions.{$this->action}");
+
+        return $translation === "filament.audit.actions.{$this->action}"
+            ? Str::headline(str_replace('.', ' ', $this->action))
+            : $translation;
+    }
+
+    public function getSubjectLabelAttribute(): string
+    {
+        $model = $this->getModelInstance();
+
+        return match (true) {
+            $model instanceof Software => $model->name,
+            $model instanceof Version => ($model->software?->name ? $model->software->name.' · ' : '').$model->version_number,
+            $model instanceof Vulnerability => $model->cve_id,
+            $model instanceof TextContent => $model->title,
+            $model instanceof VersionReview => ($model->version?->version_number ? 'v'.$model->version->version_number : $this->model_label.' #'.$this->model_id),
+            default => $this->model_label.' #'.$this->model_id,
+        };
     }
 
     /**

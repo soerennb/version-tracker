@@ -1,6 +1,86 @@
 {
     "navigation": {
+        "products": "Products",
         "timeline": "Timeline"
+    },
+    "products": {
+        "title": "Product catalog",
+        "subtitle": "Published versions, support, and security posture at a glance.",
+        "loading": "Loading products…",
+        "empty": "No published products available.",
+        "current": "Current version",
+        "released": "Released",
+        "openFindings": "Open findings",
+        "view": "Open product"
+    },
+    "product": {
+        "title": "Product",
+        "back": "All products",
+        "loading": "Loading product…",
+        "notFound": "This product is not publicly available.",
+        "current": "Current version",
+        "support": "Support",
+        "eol": "End of support",
+        "security": "Security posture",
+        "clear": "No open findings",
+        "attention": "Review required",
+        "open": "open",
+        "critical": "critical",
+        "high": "high",
+        "releases": "Releases",
+        "compare": "Compare versions",
+        "released": "Released",
+        "lts": "LTS until",
+        "downloads": "Downloads",
+        "downloadPending": "Download available after security validation",
+        "noNotes": "No release notes available.",
+        "bytes": "bytes",
+        "supportStatus": {
+            "supported": "Supported",
+            "maintenance": "Maintenance",
+            "deprecated": "Deprecated",
+            "eol": "End of life",
+            "unknown": "Not specified"
+        }
+    },
+    "release": {
+        "title": "Release",
+        "back": "Back to product",
+        "loading": "Loading release…",
+        "notFound": "This release is not publicly available.",
+        "released": "Released",
+        "support": "Support",
+        "eol": "End of support",
+        "lts": "LTS until",
+        "notes": "Release notes",
+        "language": "Language",
+        "downloads": "Attachments",
+        "downloadPending": "Protected download pending",
+        "advisories": "Security advisories",
+        "noAdvisories": "No published advisories for this release.",
+        "fixedIn": "Fixed in",
+        "affected": "Affected",
+        "cvss": "CVSS"
+    },
+    "compare": {
+        "title": "Version comparison",
+        "back": "Back to product",
+        "left": "Base version",
+        "right": "Target version",
+        "loading": "Loading comparison…",
+        "invalid": "These versions cannot be compared.",
+        "releaseNotes": "Release notes",
+        "security": "Security",
+        "attachments": "Attachments",
+        "dependencies": "Dependency changes",
+        "noNotes": "No notes in this language.",
+        "noItems": "No entries.",
+        "added": "Added",
+        "removed": "Removed",
+        "changed": "Changed",
+        "unchanged": "Unchanged",
+        "from": "from",
+        "to": "to"
     },
     "timeline": {
         "title": "Release Timeline",
@@ -10,7 +90,16 @@
         "loading": "Loading releases…",
         "filter": {
             "label": "Software focus",
-            "all": "All products"
+            "all": "All products",
+            "any": "Any",
+            "search": "Search",
+            "searchPlaceholder": "Product, version, or release note",
+            "product": "Product",
+            "support": "Support",
+            "security": "Security",
+            "from": "From",
+            "to": "To",
+            "clear": "Clear filters"
         }
     }
 }

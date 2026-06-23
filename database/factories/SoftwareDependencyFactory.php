@@ -20,6 +20,7 @@ class SoftwareDependencyFactory extends Factory
         return [
             'software_id' => Software::factory(),
             'depends_on_software_id' => Software::factory(),
+            'applies_to_version_id' => null,
             'min_version_id' => Version::factory(),
             'max_version_id' => Version::factory(),
             'dependency_type' => fake()->randomElement(['runtime', 'build', 'dev']),

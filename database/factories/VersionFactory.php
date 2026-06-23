@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\SupportStatus;
 use App\Enums\VersionStatus;
 use App\Models\Software;
 use App\Models\Version;
@@ -28,7 +29,7 @@ class VersionFactory extends Factory
             'approval_status' => fake()->randomElement(array_map(static fn (ApprovalStatus $status): string => $status->value, ApprovalStatus::cases())),
             'eol_date' => fake()->optional()->dateTimeBetween($releaseDate, '+2 years'),
             'lts_date' => fake()->optional()->dateTimeBetween($releaseDate, '+1 year'),
-            'support_status' => fake()->optional()->randomElement(['supported', 'deprecated', 'maintenance']),
+            'support_status' => fake()->optional()->randomElement(array_map(static fn (SupportStatus $status): string => $status->value, SupportStatus::cases())),
         ];
     }
 }

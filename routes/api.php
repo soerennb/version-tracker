@@ -3,14 +3,23 @@
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\FileAttachmentController;
+use App\Http\Controllers\Api\ImpactAnalysisController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\SoftwareDependencyController;
+use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TextContentController;
 use App\Http\Controllers\Api\VersionController;
+use App\Http\Controllers\Public\CompareController;
+use App\Http\Controllers\Public\ProductController;
+use App\Http\Controllers\Public\ReleaseController;
 use App\Http\Controllers\Public\TimelineController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('public')->middleware('throttle:api')->group(function () {
+    Route::get('products', [ProductController::class, 'index']);
+    Route::get('products/{software}', [ProductController::class, 'show']);
+    Route::get('releases/{version}', [ReleaseController::class, 'show']);
+    Route::get('compare', CompareController::class);
     Route::get('timeline', [TimelineController::class, 'index']);
 });
 
@@ -30,7 +39,14 @@ Route::middleware(['throttle:api', 'auth:sanctum'])->group(function () {
 
     Route::apiResource('software-dependencies', SoftwareDependencyController::class);
 
+    Route::prefix('impact')->group(function () {
+        Route::get('software/{software}', [ImpactAnalysisController::class, 'software']);
+        Route::get('versions/{version}', [ImpactAnalysisController::class, 'version']);
+        Route::get('vulnerabilities/{vulnerability}', [ImpactAnalysisController::class, 'vulnerability']);
+    });
+
     Route::apiResource('audit-logs', AuditLogController::class)->only(['index', 'show']);
+    Route::apiResource('subscriptions', SubscriptionController::class)->only(['index', 'store', 'destroy']);
 
     Route::prefix('export')->group(function () {
         Route::get('versions/csv', [ExportController::class, 'versionsCsv']);

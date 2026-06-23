@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\VulnerabilitySeverity;
+use App\Enums\VulnerabilityStatus;
 use App\Exports\AuditLogExport;
 use App\Exports\SoftwareExport;
 use App\Exports\VersionsExport;
@@ -17,20 +19,20 @@ class ExportService
 {
     protected string $directory = 'exports';
 
-    public function exportVersionsToCsv(?Collection $versions = null): string
+    public function exportVersionsToCsv(?Collection $versions = null, array $filters = []): string
     {
         $filename = $this->buildFilename('versions', 'csv');
-        Excel::store(new VersionsExport($versions), $filename, $this->disk());
+        Excel::store(new VersionsExport($versions ?? $this->filteredVersions($filters)), $filename, $this->disk());
 
         return $this->path($filename);
     }
 
-    public function exportVersionsToPdf(?Collection $versions = null): string
+    public function exportVersionsToPdf(?Collection $versions = null, array $filters = []): string
     {
         $filename = $this->buildFilename('versions', 'pdf');
 
         $data = [
-            'versions' => $versions ?? Version::with(['software', 'textContents'])->get(),
+            'versions' => $versions ?? $this->filteredVersions($filters),
             'generated_at' => now(),
         ];
 
@@ -39,6 +41,30 @@ class ExportService
         Storage::disk($this->disk())->put($filename, $pdf->output());
 
         return $this->path($filename);
+    }
+
+    public function filteredVersions(array $filters = []): Collection
+    {
+        return Version::query()
+            ->with(['software', 'textContents', 'fileAttachments', 'vulnerabilities'])
+            ->when($filters['software_id'] ?? null, fn ($query, $softwareId) => $query->where('software_id', $softwareId))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('release_date', '>=', Carbon::parse($date)->toDateString()))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('release_date', '<=', Carbon::parse($date)->toDateString()))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['approval_status'] ?? null, fn ($query, $approvalStatus) => $query->where('approval_status', $approvalStatus))
+            ->when($filters['compliance_status'] ?? null, fn ($query, $complianceStatus) => $query->whereHas('software', fn ($query) => $query->where('compliance_status', $complianceStatus)))
+            ->when($filters['security'] ?? null, function ($query, string $security): void {
+                match ($security) {
+                    'with_vulnerabilities' => $query->whereHas('vulnerabilities'),
+                    'without_vulnerabilities' => $query->whereDoesntHave('vulnerabilities'),
+                    'open_high_critical' => $query->whereHas('vulnerabilities', fn ($query) => $query
+                        ->where('status', VulnerabilityStatus::OPEN->value)
+                        ->whereIn('severity', [VulnerabilitySeverity::HIGH->value, VulnerabilitySeverity::CRITICAL->value])),
+                    default => null,
+                };
+            })
+            ->orderByDesc('release_date')
+            ->get();
     }
 
     public function exportSoftwareToCsv(): string

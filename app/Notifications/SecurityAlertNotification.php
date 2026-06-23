@@ -51,7 +51,7 @@ class SecurityAlertNotification extends Notification
         return [
             'vulnerability_id' => $this->vulnerability->id,
             'cve_id' => $this->vulnerability->cve_id,
-            'severity' => $this->vulnerability->severity,
+            'severity' => $this->vulnerability->severity?->value,
         ];
     }
 }

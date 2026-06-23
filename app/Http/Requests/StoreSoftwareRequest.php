@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ComplianceStatus;
 use App\Enums\SoftwareStatus;
 use App\Models\Software;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -30,7 +31,7 @@ class StoreSoftwareRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'status' => ['required', Rule::enum(SoftwareStatus::class)],
             'license_type' => ['nullable', 'string', 'max:255'],
-            'compliance_status' => ['required', 'string', 'max:255'],
+            'compliance_status' => ['required', Rule::enum(ComplianceStatus::class)],
             'github_repo_url' => ['nullable', 'url', 'max:255'],
         ];
     }

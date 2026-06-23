@@ -1,0 +1,677 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Versiontracker API",
+        "description": "Public and authenticated API endpoints for software releases, security advisories, impact analysis, subscriptions, imports, and exports.",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/security": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Public security advisories page",
+                "operationId": "2023289868f5ff1fe0d5a2b6460a659f",
+                "responses": {
+                    "200": {
+                        "description": "Published security advisories without internal workflow data."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/",
+                        "description": "Web base path"
+                    },
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/public/timeline": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Public release timeline",
+                "operationId": "ef917bd0fe5978b6ac1572a49ece753b",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 100
+                        }
+                    },
+                    {
+                        "name": "software",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "support",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "supported",
+                                "maintenance",
+                                "deprecated",
+                                "eol"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "security",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "clear",
+                                "attention"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Published release timeline."
+                    },
+                    "422": {
+                        "description": "Invalid filters."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/public/products": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "List products with published releases",
+                "operationId": "ed455bcd99c753b5c8f286d03676976b",
+                "responses": {
+                    "200": {
+                        "description": "Public product catalog with current release health."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/public/products/{software}": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Get a public product profile",
+                "operationId": "8b9f2725d38313b36d5b36dc1ee86f9f",
+                "parameters": [
+                    {
+                        "name": "software",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Published releases, lifecycle, security, and attachment metadata."
+                    },
+                    "404": {
+                        "description": "Product has no published release."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/public/releases/{version}": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Get a published release",
+                "operationId": "0bb804bd83cfd6b21f422dc268db54da",
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Localized notes, attachments, advisories, and lifecycle metadata."
+                    },
+                    "404": {
+                        "description": "Release is not published."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/public/compare": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Compare two published releases of one product",
+                "operationId": "efcf9421095c3ba94a890df2237b616a",
+                "parameters": [
+                    {
+                        "name": "left",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "right",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notes, security, attachments, and dependency changes."
+                    },
+                    "404": {
+                        "description": "Versions are not public or belong to different products."
+                    },
+                    "422": {
+                        "description": "Invalid version selection."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/downloads/{version}/{fileAttachment}": {
+            "get": {
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Download an attachment of a published release",
+                "operationId": "70214481e2c4df73551f465b290d8251",
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "fileAttachment",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Attachment stream."
+                    },
+                    "404": {
+                        "description": "Attachment is unavailable or not public."
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "/",
+                        "description": "Web base path"
+                    },
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/impact/software/{software}": {
+            "get": {
+                "tags": [
+                    "Impact"
+                ],
+                "summary": "Impact analysis for software",
+                "operationId": "2d290a43aae134c0ba26bf082d5826e1",
+                "parameters": [
+                    {
+                        "name": "software",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transitive affected software graph."
+                    },
+                    "403": {
+                        "description": "Not authorized."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/impact/versions/{version}": {
+            "get": {
+                "tags": [
+                    "Impact"
+                ],
+                "summary": "Impact analysis for a version",
+                "operationId": "c8b122529122ed958485afd3bbca2a69",
+                "parameters": [
+                    {
+                        "name": "version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Affected software for this version."
+                    },
+                    "403": {
+                        "description": "Not authorized."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/impact/vulnerabilities/{vulnerability}": {
+            "get": {
+                "tags": [
+                    "Impact"
+                ],
+                "summary": "Impact analysis for a vulnerability",
+                "operationId": "5ab0b5dc3b7e8813dd43112ec88c1d0b",
+                "parameters": [
+                    {
+                        "name": "vulnerability",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Affected software for this vulnerability."
+                    },
+                    "403": {
+                        "description": "Not authorized."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/subscriptions": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List current user subscriptions",
+                "operationId": "260fe41d1c22eda8dfd372d80b6d3a9d",
+                "responses": {
+                    "200": {
+                        "description": "Subscription list scoped to authenticated user."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Create a software subscription",
+                "operationId": "d89103568814ad62e01955a1d75995ae",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "software_id",
+                                    "event"
+                                ],
+                                "properties": {
+                                    "software_id": {
+                                        "type": "integer"
+                                    },
+                                    "event": {
+                                        "type": "string",
+                                        "enum": [
+                                            "all",
+                                            "release",
+                                            "security",
+                                            "eol"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Subscription created."
+                    },
+                    "200": {
+                        "description": "Subscription already existed."
+                    },
+                    "422": {
+                        "description": "Validation failed."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/subscriptions/{subscription}": {
+            "delete": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Delete own subscription",
+                "operationId": "611ed9394638c8ea794ba859daae974c",
+                "parameters": [
+                    {
+                        "name": "subscription",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Subscription deleted."
+                    },
+                    "404": {
+                        "description": "Subscription not found for current user."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/export/versions/csv": {
+            "get": {
+                "tags": [
+                    "Exports"
+                ],
+                "summary": "Export versions as CSV",
+                "operationId": "cd83894ed95db9a0e36ad6ce33aa7b77",
+                "parameters": [
+                    {
+                        "name": "software_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "date_from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "date_to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "approval_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "security",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "with_vulnerabilities",
+                                "without_vulnerabilities",
+                                "open_high_critical"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "compliance_status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV file download."
+                    },
+                    "403": {
+                        "description": "Not authorized."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        },
+        "/export/versions/pdf": {
+            "get": {
+                "tags": [
+                    "Exports"
+                ],
+                "summary": "Export versions as PDF",
+                "operationId": "01403900bd4743bd940a9e791b30b4d8",
+                "responses": {
+                    "200": {
+                        "description": "PDF file download. Supports the same filters as CSV export."
+                    },
+                    "403": {
+                        "description": "Not authorized."
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "/api",
+                        "description": "API base path"
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "sanctum": {
+                "type": "http",
+                "bearerFormat": "Sanctum",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Public",
+            "description": "Public"
+        },
+        {
+            "name": "Impact",
+            "description": "Impact"
+        },
+        {
+            "name": "Subscriptions",
+            "description": "Subscriptions"
+        },
+        {
+            "name": "Exports",
+            "description": "Exports"
+        }
+    ]
+}

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\SoftwareDependencyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SoftwareDependency extends Model
 {
-    /** @use HasFactory<\Database\Factories\SoftwareDependencyFactory> */
+    /** @use HasFactory<SoftwareDependencyFactory> */
     use HasFactory;
 
     /**
@@ -17,6 +18,7 @@ class SoftwareDependency extends Model
     protected $fillable = [
         'software_id',
         'depends_on_software_id',
+        'applies_to_version_id',
         'min_version_id',
         'max_version_id',
         'dependency_type',
@@ -30,6 +32,11 @@ class SoftwareDependency extends Model
     public function dependsOnSoftware(): BelongsTo
     {
         return $this->belongsTo(Software::class, 'depends_on_software_id');
+    }
+
+    public function appliesToVersion(): BelongsTo
+    {
+        return $this->belongsTo(Version::class, 'applies_to_version_id');
     }
 
     public function minVersion(): BelongsTo

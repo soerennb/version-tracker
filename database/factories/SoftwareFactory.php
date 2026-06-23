@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ComplianceStatus;
 use App\Enums\SoftwareStatus;
 use App\Models\Software;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -23,7 +24,7 @@ class SoftwareFactory extends Factory
             'current_version' => null,
             'last_release_date' => null,
             'license_type' => fake()->randomElement(['MIT', 'GPLv3', 'Apache-2.0']),
-            'compliance_status' => fake()->randomElement(['compliant', 'non_compliant', 'unknown']),
+            'compliance_status' => fake()->randomElement(array_map(static fn (ComplianceStatus $status): string => $status->value, ComplianceStatus::cases())),
             'github_repo_url' => fake()->url(),
         ];
     }

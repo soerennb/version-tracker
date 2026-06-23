@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\SupportStatus;
 use App\Enums\VersionStatus;
+use Database\Factories\VersionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Version extends Model
 {
-    /** @use HasFactory<\Database\Factories\VersionFactory> */
+    /** @use HasFactory<VersionFactory> */
     use HasFactory;
 
     /**
@@ -19,10 +21,12 @@ class Version extends Model
      */
     protected $fillable = [
         'software_id',
+        'created_by',
         'version_number',
         'release_date',
         'status',
         'approval_status',
+        'rejection_reason',
         'eol_date',
         'lts_date',
         'support_status',
@@ -39,12 +43,18 @@ class Version extends Model
             'lts_date' => 'date',
             'status' => VersionStatus::class,
             'approval_status' => ApprovalStatus::class,
+            'support_status' => SupportStatus::class,
         ];
     }
 
     public function software(): BelongsTo
     {
         return $this->belongsTo(Software::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function textContents(): HasMany
@@ -70,5 +80,10 @@ class Version extends Model
     public function vulnerabilities(): HasMany
     {
         return $this->hasMany(Vulnerability::class, 'affected_version_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(VersionReview::class);
     }
 }

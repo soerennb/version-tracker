@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Software\Schemas;
 
+use App\Enums\ComplianceStatus;
 use App\Enums\SoftwareStatus;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -14,6 +15,9 @@ class SoftwareForm
     {
         $statusOptions = collect(SoftwareStatus::cases())
             ->mapWithKeys(fn (SoftwareStatus $status) => [$status->value => $status->label()])
+            ->all();
+        $complianceOptions = collect(ComplianceStatus::cases())
+            ->mapWithKeys(fn (ComplianceStatus $status) => [$status->value => $status->label()])
             ->all();
 
         return $schema
@@ -36,12 +40,8 @@ class SoftwareForm
                     ->maxLength(255),
                 Select::make('compliance_status')
                     ->label(__('filament.software.fields.compliance_status'))
-                    ->options([
-                        'compliant' => __('filament.software.compliance.compliant'),
-                        'non_compliant' => __('filament.software.compliance.non_compliant'),
-                        'unknown' => __('filament.software.compliance.unknown'),
-                    ])
-                    ->default('unknown')
+                    ->options($complianceOptions)
+                    ->default(ComplianceStatus::UNKNOWN->value)
                     ->required(),
                 TextInput::make('github_repo_url')
                     ->label(__('filament.software.fields.github_repo_url'))

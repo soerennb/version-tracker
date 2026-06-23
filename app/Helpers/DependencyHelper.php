@@ -40,6 +40,16 @@ class DependencyHelper
         return VersionHelper::isVersionInRange($version, $minVersion, $maxVersion);
     }
 
+    public static function wouldCreateCycle(int $softwareId, int $dependsOnSoftwareId, ?int $ignoreDependencyId = null): bool
+    {
+        return self::hasDependencyPath($dependsOnSoftwareId, $softwareId, $ignoreDependencyId);
+    }
+
+    public static function hasDependencyPath(int $fromSoftwareId, int $toSoftwareId, ?int $ignoreDependencyId = null): bool
+    {
+        return self::searchDependencyPath($fromSoftwareId, $toSoftwareId, $ignoreDependencyId, []);
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -72,5 +82,34 @@ class DependencyHelper
                 'sub_dependencies' => self::getDependencyTree($dependency->dependsOnSoftware),
             ];
         }
+    }
+
+    /**
+     * @param  array<int, bool>  $visited
+     */
+    protected static function searchDependencyPath(int $fromSoftwareId, int $toSoftwareId, ?int $ignoreDependencyId, array $visited): bool
+    {
+        if ($fromSoftwareId === $toSoftwareId) {
+            return true;
+        }
+
+        if (isset($visited[$fromSoftwareId])) {
+            return false;
+        }
+
+        $visited[$fromSoftwareId] = true;
+
+        $nextSoftwareIds = SoftwareDependency::query()
+            ->where('software_id', $fromSoftwareId)
+            ->when($ignoreDependencyId, fn ($query) => $query->whereKeyNot($ignoreDependencyId))
+            ->pluck('depends_on_software_id');
+
+        foreach ($nextSoftwareIds as $nextSoftwareId) {
+            if (self::searchDependencyPath((int) $nextSoftwareId, $toSoftwareId, $ignoreDependencyId, $visited)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

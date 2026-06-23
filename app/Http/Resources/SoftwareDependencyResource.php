@@ -24,6 +24,10 @@ class SoftwareDependencyResource extends JsonResource
                 'id' => $this->dependsOnSoftware?->id,
                 'name' => $this->dependsOnSoftware?->name,
             ]),
+            'applies_to_version' => $this->whenLoaded('appliesToVersion', fn () => [
+                'id' => $this->appliesToVersion?->id,
+                'version_number' => $this->appliesToVersion?->version_number,
+            ]),
             'min_version' => $this->whenLoaded('minVersion', fn () => [
                 'id' => $this->minVersion?->id,
                 'version_number' => $this->minVersion?->version_number,

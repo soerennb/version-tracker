@@ -12,20 +12,20 @@ class ExportController extends Controller
 {
     public function __construct(protected ExportService $exportService) {}
 
-    public function versionsCsv(): BinaryFileResponse
+    public function versionsCsv(Request $request): BinaryFileResponse
     {
         Gate::authorize('export_data');
 
-        $path = $this->exportService->exportVersionsToCsv();
+        $path = $this->exportService->exportVersionsToCsv(filters: $request->only($this->versionFilterKeys()));
 
         return response()->download($path, basename($path));
     }
 
-    public function versionsPdf(): BinaryFileResponse
+    public function versionsPdf(Request $request): BinaryFileResponse
     {
         Gate::authorize('export_data');
 
-        $path = $this->exportService->exportVersionsToPdf();
+        $path = $this->exportService->exportVersionsToPdf(filters: $request->only($this->versionFilterKeys()));
 
         return response()->download($path, basename($path));
     }
@@ -46,5 +46,21 @@ class ExportController extends Controller
         $path = $this->exportService->exportAuditLogsToCsv($request->get('from'), $request->get('to'));
 
         return response()->download($path, basename($path));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function versionFilterKeys(): array
+    {
+        return [
+            'software_id',
+            'date_from',
+            'date_to',
+            'status',
+            'approval_status',
+            'security',
+            'compliance_status',
+        ];
     }
 }

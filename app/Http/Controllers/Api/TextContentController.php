@@ -32,36 +32,28 @@ class TextContentController extends Controller
             ->setStatusCode(201);
     }
 
-    public function show(Version $version, TextContent $textContent): JsonResponse
+    public function show(TextContent $textContent): JsonResponse
     {
         $this->authorize('view', $textContent);
-        $this->ensureRelationship($version, $textContent);
 
         return TextContentResource::make($textContent)->response();
     }
 
-    public function update(UpdateTextContentRequest $request, Version $version, TextContent $textContent): JsonResponse
+    public function update(UpdateTextContentRequest $request, TextContent $textContent): JsonResponse
     {
         $this->authorize('update', $textContent);
-        $this->ensureRelationship($version, $textContent);
 
         $textContent->update($request->validated());
 
         return TextContentResource::make($textContent)->response();
     }
 
-    public function destroy(Version $version, TextContent $textContent): JsonResponse
+    public function destroy(TextContent $textContent): JsonResponse
     {
         $this->authorize('delete', $textContent);
-        $this->ensureRelationship($version, $textContent);
 
         $textContent->delete();
 
         return response()->json(status: 204);
-    }
-
-    protected function ensureRelationship(Version $version, TextContent $textContent): void
-    {
-        abort_if($textContent->version_id !== $version->id, 404);
     }
 }

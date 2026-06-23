@@ -14,4 +14,12 @@ return [
         'subject' => 'Security alert for :cve',
         'body' => 'New vulnerability :cve (:severity) detected in :software :version.',
     ],
+    'lifecycle_alert' => [
+        'subject' => ':software :version reaches EOL soon',
+        'body' => ':software :version reaches end of life on :date.',
+    ],
+    'fix_available' => [
+        'subject' => 'Fix available for :cve',
+        'body' => 'A fixed version (:version) is available for :cve in :software.',
+    ],
 ];

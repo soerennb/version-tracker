@@ -2,12 +2,16 @@
 
 namespace App\Filament\Resources\Versions\RelationManagers;
 
+use App\Enums\ExploitabilityStatus;
+use App\Enums\VulnerabilitySeverity;
+use App\Enums\VulnerabilityStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -21,15 +25,48 @@ class VulnerabilitiesRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
+        $severityOptions = collect(VulnerabilitySeverity::cases())
+            ->mapWithKeys(fn (VulnerabilitySeverity $severity) => [$severity->value => $severity->label()])
+            ->all();
+        $statusOptions = collect(VulnerabilityStatus::cases())
+            ->mapWithKeys(fn (VulnerabilityStatus $status) => [$status->value => $status->label()])
+            ->all();
+        $exploitabilityOptions = collect(ExploitabilityStatus::cases())
+            ->mapWithKeys(fn (ExploitabilityStatus $status) => [$status->value => $status->label()])
+            ->all();
+
         return $schema
             ->components([
                 TextInput::make('cve_id')
                     ->required(),
-                TextInput::make('severity')
+                Select::make('severity')
+                    ->options($severityOptions)
                     ->required(),
+                TextInput::make('cvss_score')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(10),
                 Textarea::make('description')
                     ->required()
                     ->columnSpanFull(),
+                TextInput::make('source')
+                    ->maxLength(255),
+                TextInput::make('source_url')
+                    ->url()
+                    ->maxLength(255),
+                TextInput::make('affected_range')
+                    ->maxLength(255),
+                Select::make('fixed_version_id')
+                    ->relationship('fixedVersion', 'version_number')
+                    ->searchable(),
+                Select::make('status')
+                    ->options($statusOptions)
+                    ->default(VulnerabilityStatus::OPEN->value)
+                    ->required(),
+                Select::make('exploitability')
+                    ->options($exploitabilityOptions)
+                    ->default(ExploitabilityStatus::UNKNOWN->value)
+                    ->required(),
                 DatePicker::make('published_date')
                     ->required(),
             ]);
@@ -43,7 +80,19 @@ class VulnerabilitiesRelationManager extends RelationManager
                 TextColumn::make('cve_id')
                     ->searchable(),
                 TextColumn::make('severity')
+                    ->badge()
+                    ->formatStateUsing(fn (?VulnerabilitySeverity $state) => $state?->label())
+                    ->color(fn (?VulnerabilitySeverity $state) => $state?->color() ?? 'gray')
                     ->searchable(),
+                TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (?VulnerabilityStatus $state) => $state?->label())
+                    ->color(fn (?VulnerabilityStatus $state) => $state?->color() ?? 'gray'),
+                TextColumn::make('exploitability')
+                    ->badge()
+                    ->formatStateUsing(fn (?ExploitabilityStatus $state) => $state?->label())
+                    ->color(fn (?ExploitabilityStatus $state) => $state?->color() ?? 'gray')
+                    ->toggleable(),
                 TextColumn::make('published_date')
                     ->date()
                     ->sortable(),

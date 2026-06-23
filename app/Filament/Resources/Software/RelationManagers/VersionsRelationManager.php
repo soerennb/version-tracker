@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Software\RelationManagers;
 
+use App\Enums\SupportStatus;
+use App\Helpers\VersionHelper;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -20,15 +23,22 @@ class VersionsRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
+        $supportOptions = collect(SupportStatus::cases())
+            ->mapWithKeys(fn (SupportStatus $status) => [$status->value => $status->label()])
+            ->all();
+
         return $schema
             ->components([
                 TextInput::make('version_number')
-                    ->required(),
+                    ->required()
+                    ->regex(VersionHelper::semverRegex())
+                    ->helperText('e.g. 1.2.3, 1.2.3-rc.1, 1.2.3+build.5'),
                 DatePicker::make('release_date')
                     ->required(),
                 DatePicker::make('eol_date'),
                 DatePicker::make('lts_date'),
-                TextInput::make('support_status'),
+                Select::make('support_status')
+                    ->options($supportOptions),
             ]);
     }
 
@@ -55,6 +65,9 @@ class VersionsRelationManager extends RelationManager
                     ->date()
                     ->sortable(),
                 TextColumn::make('support_status')
+                    ->badge()
+                    ->formatStateUsing(fn (?SupportStatus $state) => $state?->label())
+                    ->color(fn (?SupportStatus $state) => $state?->color() ?? 'gray')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

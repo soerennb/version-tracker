@@ -50,7 +50,7 @@ class CreateVersion extends CreateRecord
             'approval_status' => $source->approval_status?->value,
             'eol_date' => optional($source->eol_date)?->toDateString(),
             'lts_date' => optional($source->lts_date)?->toDateString(),
-            'support_status' => $source->support_status,
+            'support_status' => $source->support_status?->value,
         ];
     }
 }

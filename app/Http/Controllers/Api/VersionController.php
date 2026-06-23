@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RejectVersionRequest;
 use App\Http\Requests\StoreVersionRequest;
 use App\Http\Requests\UpdateVersionRequest;
 use App\Http\Resources\VersionResource;
@@ -75,15 +76,11 @@ class VersionController extends Controller
         return VersionResource::make($approved)->response();
     }
 
-    public function reject(Request $request, Version $version): JsonResponse
+    public function reject(RejectVersionRequest $request, Version $version): JsonResponse
     {
-        $this->authorize('update', $version);
+        $data = $request->validated();
 
-        $data = $request->validate([
-            'reason' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $rejected = $this->versionService->reject($version, $data['reason'] ?? null);
+        $rejected = $this->versionService->reject($version, $data['reason'], $data['reject_reason']);
 
         return VersionResource::make($rejected)->response();
     }

@@ -17,7 +17,7 @@ class SoftwareDependencyController extends Controller
         Gate::authorize('manage_dependencies');
 
         $dependencies = SoftwareDependency::query()
-            ->with(['software', 'dependsOnSoftware', 'minVersion', 'maxVersion'])
+            ->with(['software', 'dependsOnSoftware', 'appliesToVersion', 'minVersion', 'maxVersion'])
             ->paginate(25);
 
         return SoftwareDependencyResource::collection($dependencies)->response();

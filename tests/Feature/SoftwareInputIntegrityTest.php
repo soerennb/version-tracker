@@ -69,4 +69,23 @@ class SoftwareInputIntegrityTest extends TestCase
         $this->assertSame('1.0.0', $software->current_version);
         $this->assertSame('2025-12-01', $software->last_release_date?->toDateString());
     }
+
+    public function test_store_rejects_invalid_compliance_status(): void
+    {
+        $user = User::factory()->create([
+            'role' => UserRole::VIEWER,
+            'abilities' => ['create_software'],
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/softwares', [
+            'name' => 'SecurityTracker',
+            'description' => 'desc',
+            'status' => SoftwareStatus::ACTIVE->value,
+            'license_type' => 'MIT',
+            'compliance_status' => 'unclear',
+            'github_repo_url' => 'https://example.com/repo',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('compliance_status');
+    }
 }

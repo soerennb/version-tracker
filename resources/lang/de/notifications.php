@@ -14,4 +14,12 @@ return [
         'subject' => 'Sicherheitswarnung für :cve',
         'body' => 'Neue Sicherheitslücke :cve (:severity) in :software :version entdeckt.',
     ],
+    'lifecycle_alert' => [
+        'subject' => ':software :version erreicht bald EOL',
+        'body' => ':software :version erreicht am :date das Ende des Lebenszyklus.',
+    ],
+    'fix_available' => [
+        'subject' => 'Fix für :cve verfügbar',
+        'body' => 'Für :cve in :software ist eine behobene Version (:version) verfügbar.',
+    ],
 ];

@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\Software\RelationManagers;
 
+use App\Models\Version;
+use App\Rules\AcyclicSoftwareDependency;
+use App\Rules\VersionBelongsToSoftware;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -24,11 +27,16 @@ class DependenciesIncomingRelationManager extends RelationManager
             ->components([
                 Select::make('software_id')
                     ->relationship('software', 'name')
+                    ->rules(fn (): array => [new AcyclicSoftwareDependency((int) $this->getOwnerRecord()->getKey(), valueIsSource: true)])
                     ->required(),
                 Select::make('min_version_id')
-                    ->relationship('minVersion', 'id'),
+                    ->options(fn (): array => $this->ownerVersionOptions())
+                    ->searchable()
+                    ->rules(fn (): array => [new VersionBelongsToSoftware((int) $this->getOwnerRecord()->getKey())]),
                 Select::make('max_version_id')
-                    ->relationship('maxVersion', 'id'),
+                    ->options(fn (): array => $this->ownerVersionOptions())
+                    ->searchable()
+                    ->rules(fn (): array => [new VersionBelongsToSoftware((int) $this->getOwnerRecord()->getKey())]),
                 TextInput::make('dependency_type')
                     ->required()
                     ->default('runtime'),
@@ -72,5 +80,17 @@ class DependenciesIncomingRelationManager extends RelationManager
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function ownerVersionOptions(): array
+    {
+        return Version::query()
+            ->where('software_id', $this->getOwnerRecord()->getKey())
+            ->orderByDesc('release_date')
+            ->pluck('version_number', 'id')
+            ->all();
     }
 }

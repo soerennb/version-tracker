@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Enums\VulnerabilitySeverity;
 use App\Models\Software;
 use App\Models\Vulnerability;
 use Illuminate\Support\Facades\Cache;
@@ -11,10 +12,10 @@ class SecurityHelper
     public static function calculateVulnerabilityScore(Vulnerability $vulnerability): float
     {
         $baseScore = match ($vulnerability->severity) {
-            'critical' => 9.0,
-            'high' => 7.0,
-            'medium' => 5.0,
-            'low' => 2.0,
+            VulnerabilitySeverity::CRITICAL => 9.0,
+            VulnerabilitySeverity::HIGH => 7.0,
+            VulnerabilitySeverity::MEDIUM => 5.0,
+            VulnerabilitySeverity::LOW => 2.0,
             default => 0.0,
         };
 
@@ -35,8 +36,8 @@ class SecurityHelper
                 ->pluck('vulnerabilities')
                 ->flatten();
 
-            $critical = $vulnerabilities->where('severity', 'critical')->count();
-            $high = $vulnerabilities->where('severity', 'high')->count();
+            $critical = $vulnerabilities->where('severity', VulnerabilitySeverity::CRITICAL)->count();
+            $high = $vulnerabilities->where('severity', VulnerabilitySeverity::HIGH)->count();
 
             return match (true) {
                 $critical > 0 => 'critical',

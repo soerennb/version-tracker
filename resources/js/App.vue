@@ -1,7 +1,7 @@
 <template>
-    <div class="min-h-screen bg-gray-50 text-gray-900">
+    <div class="flex min-h-screen flex-col bg-gray-50 text-gray-900">
         <Navigation />
-        <main class="container mx-auto px-4 py-8">
+        <main class="container mx-auto flex-1 px-4 py-8">
             <RouterView />
         </main>
         <SiteFooter />

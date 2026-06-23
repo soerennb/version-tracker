@@ -2,16 +2,22 @@
 
 namespace App\Filament\Resources\Software\Tables;
 
+use App\Enums\ComplianceStatus;
 use App\Enums\SoftwareStatus;
+use App\Models\Software;
+use App\Services\GitHubReleaseImportService;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Throwable;
 
 class SoftwareTable
 {
@@ -19,6 +25,9 @@ class SoftwareTable
     {
         $statusOptions = collect(SoftwareStatus::cases())
             ->mapWithKeys(fn (SoftwareStatus $status) => [$status->value => $status->label()])
+            ->all();
+        $complianceOptions = collect(ComplianceStatus::cases())
+            ->mapWithKeys(fn (ComplianceStatus $status) => [$status->value => $status->label()])
             ->all();
 
         return $table
@@ -50,11 +59,8 @@ class SoftwareTable
                 TextColumn::make('compliance_status')
                     ->label(__('filament.software.fields.compliance_status'))
                     ->badge()
-                    ->color(fn (string $state) => match ($state) {
-                        'compliant' => 'success',
-                        'non_compliant' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->formatStateUsing(fn (?ComplianceStatus $state) => $state?->label())
+                    ->color(fn (?ComplianceStatus $state) => $state?->color() ?? 'gray'),
                 TextColumn::make('last_release_date')
                     ->label(__('filament.software.fields.last_release_date'))
                     ->date('d.m.Y')
@@ -74,15 +80,39 @@ class SoftwareTable
                     ->options($statusOptions),
                 SelectFilter::make('compliance_status')
                     ->label(__('filament.software.fields.compliance_status'))
-                    ->options([
-                        'compliant' => __('filament.software.compliance.compliant'),
-                        'non_compliant' => __('filament.software.compliance.non_compliant'),
-                        'unknown' => __('filament.software.compliance.unknown'),
-                    ]),
+                    ->options($complianceOptions),
                 TrashedFilter::make(),
             ])
             ->recordUrl(null)
             ->recordActions([
+                Action::make('importGitHubReleases')
+                    ->label(__('filament.actions.import_github_releases'))
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->requiresConfirmation()
+                    ->visible(fn (Software $record): bool => filled($record->github_repo_url))
+                    ->action(function (Software $record): void {
+                        try {
+                            $result = app(GitHubReleaseImportService::class)->importFromGitHub($record);
+                        } catch (Throwable $exception) {
+                            Notification::make()
+                                ->title(__('filament.messages.github_import_failed'))
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title(__('filament.messages.github_import_finished'))
+                            ->body(__('filament.messages.github_import_summary', [
+                                'created' => $result['created'],
+                                'skipped' => $result['skipped'],
+                                'errors' => count($result['errors']),
+                            ]))
+                            ->success()
+                            ->send();
+                    }),
                 EditAction::make(),
             ])
             ->toolbarActions([

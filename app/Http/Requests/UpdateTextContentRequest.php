@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Language;
+use App\Models\TextContent;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,7 +12,12 @@ class UpdateTextContentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        /** @var TextContent|null $textContent */
+        $textContent = $this->route('text_content') ?? $this->route('textContent');
+
+        return $textContent
+            ? ($this->user()?->can('update', $textContent) ?? false)
+            : false;
     }
 
     /**
