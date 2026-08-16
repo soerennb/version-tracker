@@ -11,42 +11,45 @@ VersionTracker is a Laravel 13 application that centralizes software versions, r
 
 ## Stack
 
-- PHP 8.3 · Laravel 13 · Livewire 4 · Filament 5
+- PHP 8.4 · Laravel 13 · Livewire 4 · Filament 5
 - MariaDB/MySQL/PostgreSQL/SQLite (Default: SQLite)
 - Node 22.18+ · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
 
 ## Requirements
 
-- PHP >= 8.3 + Composer 2.x
+- PHP >= 8.4.1 + Composer 2.x
 - Node.js >= 22.18 + npm 10
 - SQLite (default) or an alternative database
 
 ## Installation
 
 1. **Clone Repository**
-   ```bash
-   git clone https://github.com/<your-org>/versiontracker.git
-   cd versiontracker
-   ```
+
+    ```bash
+    git clone https://github.com/<your-org>/versiontracker.git
+    cd versiontracker
+    ```
 
 2. **Install the Application**
-   ```bash
-   composer run setup
-   ```
-   This creates the SQLite database, generates the application key, runs migrations, installs locked frontend dependencies, and builds the assets.
+
+    ```bash
+    composer run setup
+    ```
+
+    This creates the SQLite database, generates the application key, runs migrations, installs locked frontend dependencies, and builds the assets.
 
 3. **Start Application**
-   ```bash
-   composer run dev
-   ```
-   App available at `http://localhost:8000`. The Filament panel is at `/admin`.
+    ```bash
+    composer run dev
+    ```
+    App available at `http://localhost:8000`. The Filament panel is at `/admin`.
 
 For demo data, run `php artisan db:seed` after setup.
 
 ## Demo Accounts
 
-| Environment | User              | Password  |
-| ----------- | ----------------- | --------- |
+| Environment    | User               | Password   |
+| -------------- | ------------------ | ---------- |
 | Filament Admin | `demo@example.com` | `password` |
 
 ## Frontend Access
@@ -64,7 +67,22 @@ For demo data, run `php artisan db:seed` after setup.
 
 ## Self-Hosting with Docker
 
-Each `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker`. The installer requires a concrete release tag; production deployments never use `latest`.
+Each `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker` and a compact deployment bundle. The installer requires a concrete release tag; production deployments never use `latest`.
+
+### Download a deployment bundle
+
+Download the exact bundle and checksum from the GitHub Release page, then verify the archive before unpacking it:
+
+```bash
+VERSION=v0.1.2
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz"
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz.sha256"
+sha256sum --check "versiontracker-deploy-${VERSION}.tar.gz.sha256"
+tar -xzf "versiontracker-deploy-${VERSION}.tar.gz"
+cd "versiontracker-deploy-${VERSION}"
+```
+
+Cloning the repository remains supported for contributors, but operators only need this deployment bundle.
 
 ### Existing reverse proxy or local network
 
@@ -74,7 +92,19 @@ cd version-tracker
 ./install.sh install
 ```
 
-Choose `N` for Caddy, then enter the release tag (for example `v0.1.0`) and the exposed HTTP port. Point your existing reverse proxy at this port and configure `TRUSTED_PROXIES` in `.env.docker` with the proxy address.
+Choose `N` for Caddy, then enter the release tag (for example `v0.1.2`) and the exposed HTTP port. Point your existing reverse proxy at this port and configure `TRUSTED_PROXIES` in `.env.docker` with the proxy address.
+
+For unattended installations, provide the selected values explicitly and pipe only the administrator password through standard input:
+
+```bash
+printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
+  --version v0.1.2 \
+  --mode proxy \
+  --port 8080 \
+  --admin-name 'Administrator' \
+  --admin-email admin@example.com \
+  --admin-password-stdin
+```
 
 ### Public server with automatic HTTPS
 

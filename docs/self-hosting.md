@@ -1,6 +1,6 @@
 # Self-hosting
 
-VersionTracker is distributed as a versioned Docker image. Install a concrete GitHub release tag such as `v0.1.0`; do not substitute `latest` in a production deployment.
+VersionTracker is distributed as a versioned Docker image and a compact deployment bundle. Install a concrete GitHub release tag such as `v0.1.2`; do not substitute `latest` in a production deployment.
 
 ## Prerequisites
 
@@ -8,15 +8,37 @@ VersionTracker is distributed as a versioned Docker image. Install a concrete Gi
 - A public DNS record and open ports 80 and 443 when using Caddy.
 - A reverse proxy and an available local HTTP port when Caddy is not used.
 
-Clone the repository, change into it, and run the installer:
+Download the exact deployment bundle and verify its checksum before unpacking it:
 
 ```bash
-git clone https://github.com/soerennb/version-tracker.git
-cd versiontracker
+VERSION=v0.1.2
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz"
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz.sha256"
+sha256sum --check "versiontracker-deploy-${VERSION}.tar.gz.sha256"
+tar -xzf "versiontracker-deploy-${VERSION}.tar.gz"
+cd "versiontracker-deploy-${VERSION}"
 ./install.sh install
 ```
 
 The installer verifies Docker, generates `.env.docker` with mode `0600`, creates database secrets, records the selected deployment mode, starts MariaDB, and creates the initial administrator. Demo data requires a second confirmation because it includes a public password.
+
+Repository cloning remains supported for contributors. Operators only need the deployment bundle.
+
+### Unattended installation
+
+Supply all configuration options and pass only the administrator password over standard input. Do not place the password in a command-line argument, `.env.docker`, CI log, or shell history.
+
+```bash
+printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
+  --version v0.1.2 \
+  --mode proxy \
+  --port 8080 \
+  --admin-name 'Administrator' \
+  --admin-email admin@example.com \
+  --admin-password-stdin
+```
+
+For Caddy, replace `--mode proxy --port 8080` with `--mode caddy --domain example.com --email ops@example.com`. The selected domain must already resolve to the server and ports 80 and 443 must be available.
 
 ## Deployment modes
 
@@ -26,13 +48,15 @@ Choose `proxy` when an existing reverse proxy terminates TLS or the application 
 
 Important `.env.docker` settings:
 
-| Setting | Purpose |
-| --- | --- |
-| `VERSION` | Required exact `v0.x.y` image tag. |
-| `DEPLOYMENT_MODE` | `proxy` or `caddy`; updates reuse this choice. |
-| `APP_URL` | Public URL used for generated links. |
+| Setting                             | Purpose                                                   |
+| ----------------------------------- | --------------------------------------------------------- |
+| `VERSION`                           | Required exact `v0.x.y` image tag.                        |
+| `IMAGE_REPOSITORY`                  | Published VersionTracker image repository.                |
+| `MARIADB_IMAGE` / `CADDY_IMAGE`     | Tested, pinned supporting images.                         |
+| `DEPLOYMENT_MODE`                   | `proxy` or `caddy`; updates reuse this choice.            |
+| `APP_URL`                           | Public URL used for generated links.                      |
 | `TRUSTED_HOSTS` / `TRUSTED_PROXIES` | Restrict the public hostname and trusted proxy addresses. |
-| `DB_PASSWORD` / `DB_ROOT_PASSWORD` | Generated MariaDB credentials; keep them private. |
+| `DB_PASSWORD` / `DB_ROOT_PASSWORD`  | Generated MariaDB credentials; keep them private.         |
 
 ## Operations
 
@@ -49,6 +73,8 @@ Back up MariaDB, Laravel storage, and the current environment file before every 
 ```
 
 Backups are stored under `backups/versiontracker-<timestamp>/` with owner-only permissions. Copy them off the server; they contain database data and credentials.
+
+Schedule this command with the server's existing scheduler and copy its completed backup directory to independent storage. For example, run it daily through a systemd timer or cron, redirect the output to an operator-only log, and alert when the command fails. A backup retained only on the deployment host does not protect against host loss.
 
 Upgrade by entering the next exact release tag:
 

@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/soerennb/version-tracker:${VERSION:?Set VERSION to a concrete v0.x.y release tag}
+    image: ${IMAGE_REPOSITORY:-ghcr.io/soerennb/version-tracker}:${VERSION:?Set VERSION to a concrete v0.x.y release tag}
     env_file:
       - .env.docker
     depends_on:
@@ -11,7 +11,7 @@ services:
       - app_storage:/var/www/html/storage
 
   db:
-    image: mariadb:11
+    image: ${MARIADB_IMAGE:-mariadb:11.8.8}
     environment:
       MARIADB_DATABASE: ${DB_DATABASE}
       MARIADB_USER: ${DB_USERNAME}

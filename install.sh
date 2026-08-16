@@ -5,6 +5,15 @@ set -euo pipefail
 readonly environment_file=.env.docker
 readonly backup_directory=backups
 
+install_version=''
+install_mode=''
+install_port=''
+install_domain=''
+install_email=''
+install_admin_name=''
+install_admin_email=''
+install_admin_password_stdin=false
+
 set_environment_value() {
     local key="$1"
     local value="$2"
@@ -50,6 +59,83 @@ is_valid_version() {
     [[ "$1" =~ ^v0\.[0-9]+\.[0-9]+$ ]]
 }
 
+usage() {
+    cat <<'EOF'
+Usage:
+  ./install.sh install [--version v0.x.y] [--mode proxy|caddy] [--port PORT]
+                       [--domain DOMAIN --email EMAIL]
+                       [--admin-name NAME --admin-email EMAIL --admin-password-stdin]
+  ./install.sh update
+  ./install.sh status
+  ./install.sh backup
+
+When all install options are supplied, pipe the administrator password to standard input.
+EOF
+}
+
+parse_install_options() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --version)
+                install_version="$2"
+                shift 2
+                ;;
+            --mode)
+                install_mode="$2"
+                shift 2
+                ;;
+            --port)
+                install_port="$2"
+                shift 2
+                ;;
+            --domain)
+                install_domain="$2"
+                shift 2
+                ;;
+            --email)
+                install_email="$2"
+                shift 2
+                ;;
+            --admin-name)
+                install_admin_name="$2"
+                shift 2
+                ;;
+            --admin-email)
+                install_admin_email="$2"
+                shift 2
+                ;;
+            --admin-password-stdin)
+                install_admin_password_stdin=true
+                shift
+                ;;
+            --help|-h)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown install option: $1" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ -n "$install_mode" && "$install_mode" != proxy && "$install_mode" != caddy ]]; then
+        echo 'Install mode must be either proxy or caddy.' >&2
+        exit 1
+    fi
+
+    if [[ -n "$install_domain$install_email" && "$install_mode" != caddy ]]; then
+        echo 'Domain and ACME email require Caddy mode.' >&2
+        exit 1
+    fi
+
+    if [[ "$install_admin_password_stdin" == true ]] && [[ -z "$install_admin_name" || -z "$install_admin_email" ]]; then
+        echo 'Administrator name and email are required with --admin-password-stdin.' >&2
+        exit 1
+    fi
+}
+
 check_port() {
     local port="$1"
 
@@ -79,22 +165,35 @@ configure_installation() {
 
     chmod 600 "$environment_file"
 
-    local version
-    local mode
-    read -r -p 'Release image version (for example v0.1.0): ' version
+    local version="$install_version"
+    local mode="$install_mode"
+
+    if [[ -z "$version" ]]; then
+        read -r -p 'Release image version (for example v0.1.0): ' version
+    fi
+
     is_valid_version "$version" || {
         echo 'Enter a concrete v0.x.y release tag.' >&2
         exit 1
     }
     set_environment_value VERSION "$version"
 
-    read -r -p 'Use Caddy automatic HTTPS? [y/N]: ' mode
+    if [[ -z "$mode" ]]; then
+        read -r -p 'Use Caddy automatic HTTPS? [y/N]: ' mode
+    fi
 
-    if [[ "$mode" =~ ^[Yy]$ ]]; then
-        local domain
-        local email
-        read -r -p 'Public domain: ' domain
-        read -r -p 'ACME email: ' email
+    if [[ "$mode" =~ ^[Yy]$ || "$mode" == caddy ]]; then
+        local domain="$install_domain"
+        local email="$install_email"
+
+        if [[ -z "$domain" ]]; then
+            read -r -p 'Public domain: ' domain
+        fi
+
+        if [[ -z "$email" ]]; then
+            read -r -p 'ACME email: ' email
+        fi
+
         [[ -n "$domain" && -n "$email" ]] || { echo 'A domain and email are required for Caddy.' >&2; exit 1; }
 
         check_port 80
@@ -110,8 +209,12 @@ configure_installation() {
         return
     fi
 
-    local port
-    read -r -p 'Application port [8080]: ' port
+    local port="$install_port"
+
+    if [[ -z "$port" ]]; then
+        read -r -p 'Application port [8080]: ' port
+    fi
+
     port="${port:-8080}"
     [[ "$port" =~ ^[0-9]+$ ]] || { echo 'Application port must be numeric.' >&2; exit 1; }
     check_port "$port"
@@ -119,6 +222,22 @@ configure_installation() {
     set_environment_value APP_PORT "$port"
     set_environment_value APP_URL "http://localhost:${port}"
     compose_file_for_mode proxy
+}
+
+initialize_application() {
+    local compose_file="$1"
+
+    if [[ "$install_admin_password_stdin" == true ]]; then
+        compose "$compose_file" run --rm -T app php artisan app:install \
+            --no-demo \
+            --admin-name="$install_admin_name" \
+            --admin-email="$install_admin_email" \
+            --admin-password-stdin
+
+        return
+    fi
+
+    compose "$compose_file" run --rm app php artisan app:install
 }
 
 configured_compose_file() {
@@ -156,7 +275,7 @@ install() {
     compose "$compose_file" config >/dev/null
     compose "$compose_file" pull
     compose "$compose_file" up -d db
-    compose "$compose_file" run --rm app php artisan app:install
+    initialize_application "$compose_file"
     compose "$compose_file" up -d
     wait_for_health "$compose_file"
     compose "$compose_file" ps
@@ -214,6 +333,8 @@ backup() {
 
 case "${1:-}" in
     install)
+        shift
+        parse_install_options "$@"
         install
         ;;
     update)
@@ -226,7 +347,7 @@ case "${1:-}" in
         backup
         ;;
     *)
-        echo 'Usage: ./install.sh {install|update|status|backup}' >&2
+        usage >&2
         exit 1
         ;;
 esac
