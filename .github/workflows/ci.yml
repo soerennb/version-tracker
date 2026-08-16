@@ -93,6 +93,7 @@ jobs:
   mariadb:
     name: MariaDB integration tests
     runs-on: ubuntu-latest
+    needs: frontend
     services:
       db:
         image: mariadb:11
@@ -121,6 +122,12 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Download frontend assets
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-build
+          path: public/build
 
       - name: Run PHP tests with MariaDB
         env:
