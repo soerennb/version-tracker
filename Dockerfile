@@ -15,6 +15,7 @@ WORKDIR /var/www/html
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --fund=false
 
+COPY --from=vendor /var/www/html/vendor ./vendor
 COPY resources ./resources
 COPY public ./public
 COPY vite.config.js ./
