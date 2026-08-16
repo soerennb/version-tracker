@@ -24,7 +24,7 @@ RUN npm run build
 FROM php:8.3-apache-bookworm
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends curl libfreetype6-dev libicu-dev libjpeg62-turbo-dev libpng-dev libzip-dev unzip \
+    && apt-get install --yes --no-install-recommends curl libfreetype6-dev libicu-dev libjpeg62-turbo-dev libonig-dev libpng-dev libzip-dev unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd intl mbstring pdo_mysql zip \
     && a2enmod rewrite \
