@@ -132,7 +132,7 @@ configured_compose_file() {
 wait_for_health() {
     local compose_file="$1"
 
-    for attempt in {1..30}; do
+    for _ in {1..30}; do
         if compose "$compose_file" exec -T app curl --fail --silent http://localhost/up >/dev/null; then
             echo 'Application health check passed.'
 
@@ -206,7 +206,7 @@ backup() {
 
     umask 077
     mkdir -p "$target_directory"
-    compose "$compose_file" exec -T db sh -c 'exec mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"' > "$target_directory/database.sql"
+    compose "$compose_file" exec -T db sh -c "exec mariadb-dump -uroot -p\"\$MARIADB_ROOT_PASSWORD\" \"\$MARIADB_DATABASE\"" > "$target_directory/database.sql"
     compose "$compose_file" exec -T app tar -C /var/www/html -czf - storage > "$target_directory/storage.tar.gz"
     cp "$environment_file" "$target_directory/environment.backup"
     printf '%s\n' "$target_directory"

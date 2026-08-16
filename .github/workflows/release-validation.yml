@@ -36,7 +36,7 @@ jobs:
         env:
           APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
         run: |
-          php artisan test
           npm run build
+          php artisan test
           composer audit --no-interaction --abandoned=report
           npm audit --omit=dev --audit-level=high
