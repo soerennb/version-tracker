@@ -1,6 +1,9 @@
 {
     "$schema": "https://json.schemastore.org/package.json",
     "private": true,
+    "engines": {
+        "node": ">=22.18.0"
+    },
     "type": "module",
     "scripts": {
         "build": "vite build",

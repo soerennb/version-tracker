@@ -261,6 +261,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 - Continuous Integration runs on pull requests and pushes to `master`; it checks PHP formatting, PHPUnit, and the Vite production build.
 - CI is validation-only: do not add deployment steps, repository write permissions, or secrets without explicit approval.
+- The frontend workflows use Node.js 24; local frontend checks require Node.js 22.18 or later.
 - Before handing off PHP or frontend changes, run the applicable local equivalent of the CI checks. CI runs full Pint and fails if it produces a diff.
 
 
