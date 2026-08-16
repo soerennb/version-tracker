@@ -4,6 +4,7 @@
 .env.backup
 .env.production
 .env.docker
+backups/
 .phpactor.json
 .phpunit.result.cache
 composer.phar

@@ -15,6 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release_validation:
+    name: Release-ready validation
+    uses: ./.github/workflows/release-validation.yml
+
   php:
     name: PHP quality and tests
     runs-on: ubuntu-latest
@@ -141,25 +145,39 @@ jobs:
         run: php artisan test
 
   container:
-    name: Container smoke test
+    name: Container integration test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build application image
-        run: docker build --tag versiontracker:test .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ghcr.io/soerennb/version-tracker:test
+          cache-from: type=gha,scope=container
+          cache-to: type=gha,mode=max,scope=container
 
-      - name: Start application container
+      - name: Prepare Compose environment
         run: |
-          docker run --detach --name versiontracker --publish 8080:80 \
-            --env APP_ENV=production \
-            --env APP_DEBUG=false \
-            --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
-            versiontracker:test
+          cp .env.docker.example .env.docker
+          sed -i 's/^VERSION=$/VERSION=test/' .env.docker
+          sed -i 's/^APP_KEY=$/APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=/' .env.docker
+          sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=versiontracker/' .env.docker
+          sed -i 's/^DB_ROOT_PASSWORD=$/DB_ROOT_PASSWORD=root/' .env.docker
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml config --quiet
 
-      - name: Check health endpoint
+      - name: Initialize and check application
         run: |
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach db
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app php artisan migrate --force
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app
+
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/up; then
               exit 0
@@ -168,5 +186,36 @@ jobs:
             sleep 2
           done
 
-          docker logs versiontracker
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml logs
           exit 1
+
+      - name: Clean up containers
+        if: always()
+        run: docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml down --volumes --remove-orphans
+
+  compose:
+    name: Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate deployment configurations
+        run: |
+          cp .env.docker.example .env.docker
+          sed -i 's/^VERSION=$/VERSION=v0.0.0/' .env.docker
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml config --quiet
+          docker compose --env-file .env.docker -f compose.yml -f compose.caddy.yml config --quiet
+
+  shell:
+    name: Installer script
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+
+      - name: Lint installer
+        run: shellcheck install.sh

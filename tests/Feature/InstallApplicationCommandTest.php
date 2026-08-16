@@ -30,6 +30,7 @@ class InstallApplicationCommandTest extends TestCase
     public function test_it_seeds_demo_data_when_requested(): void
     {
         $this->artisan('app:install --demo')
+            ->expectsConfirmation('Demo data creates a public administrator password. Continue?', 'yes')
             ->assertSuccessful();
 
         $this->assertDatabaseHas('users', [
@@ -37,6 +38,15 @@ class InstallApplicationCommandTest extends TestCase
             'role' => UserRole::ADMIN->value,
         ]);
         $this->assertDatabaseHas('software', ['name' => 'Aurora Suite']);
+    }
+
+    public function test_it_stops_when_demo_data_is_not_explicitly_confirmed(): void
+    {
+        $this->artisan('app:install --demo')
+            ->expectsConfirmation('Demo data creates a public administrator password. Continue?', 'no')
+            ->assertFailed();
+
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_it_refuses_to_initialize_an_application_with_existing_users(): void

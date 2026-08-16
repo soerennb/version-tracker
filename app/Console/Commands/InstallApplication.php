@@ -24,7 +24,15 @@ class InstallApplication extends Command
             return self::FAILURE;
         }
 
-        if ($this->option('demo') || $this->confirm('Create demo data?', false)) {
+        $shouldCreateDemoData = $this->option('demo') || $this->confirm('Create demo data?', false);
+
+        if ($shouldCreateDemoData) {
+            if (! $this->confirm('Demo data creates a public administrator password. Continue?', false)) {
+                $this->components->warn('Installation stopped. No demo data was created.');
+
+                return self::FAILURE;
+            }
+
             $this->call('db:seed');
             $this->components->info('Demo data and the demo administrator were created.');
         } else {

@@ -259,10 +259,10 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ## GitHub Actions CI
 
-- Continuous Integration runs on pull requests and pushes to `master`; it checks PHP formatting, PHPUnit, the Vite production build, MariaDB compatibility, and the production container health endpoint.
+- Continuous Integration runs on pull requests and pushes to `master`; it checks PHP formatting, PHPUnit, the Vite production build, MariaDB compatibility, Compose-based container initialization, deployment configuration, and the installer shell script.
 - CI is validation-only: do not add deployment steps, repository write permissions, or secrets without explicit approval.
 - The frontend workflows use Node.js 24; local frontend checks require Node.js 22.18 or later.
-- Tags matching `v0.*.*` validate the release again, publish a GHCR container image, and generate GitHub release notes; they must not deploy the application.
+- Tags matching `v0.*.*` validate the release again, publish a GHCR container image with provenance and an SBOM, smoke-test its digest, and generate GitHub release notes; they must not deploy the application.
 - Before handing off PHP or frontend changes, run the applicable local equivalent of the CI checks. CI runs full Pint and fails if it produces a diff.
 
 

@@ -64,7 +64,7 @@ For demo data, run `php artisan db:seed` after setup.
 
 ## Self-Hosting with Docker
 
-Each `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker`. Pin a concrete release tag in production rather than using `latest`.
+Each `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker`. The installer requires a concrete release tag; production deployments never use `latest`.
 
 ### Existing reverse proxy or local network
 
@@ -92,9 +92,9 @@ Choose `Y` for Caddy, provide a domain whose DNS already points to the server, a
 ./install.sh update
 ```
 
-Enter the next release tag and the active proxy mode. The update pulls the image, runs database migrations, rebuilds Laravel caches, and restarts the application. Back up both the MariaDB volume and the `app_storage` volume before upgrades.
+Enter the next release tag. The update preserves the selected proxy mode, pulls the image, runs database migrations, rebuilds Laravel caches, and verifies the health endpoint.
 
-The base Compose file remains internal-only. For manual operation, use either `compose.proxy.yml` for a direct HTTP port or `compose.caddy.yml` for Caddy; always pass `--env-file .env.docker`.
+Use `./install.sh status` to inspect a deployment and `./install.sh backup` before upgrades. The complete [self-hosting guide](docs/self-hosting.md) covers configuration, backup, restore, and rollback. Maintainers should follow the [release guide](docs/releasing.md) when publishing a tag.
 
 ## License
 

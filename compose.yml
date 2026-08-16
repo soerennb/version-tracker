@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/soerennb/version-tracker:${VERSION:-latest}
+    image: ghcr.io/soerennb/version-tracker:${VERSION:?Set VERSION to a concrete v0.x.y release tag}
     env_file:
       - .env.docker
     depends_on:
