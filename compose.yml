@@ -1,0 +1,31 @@
+services:
+  app:
+    image: ghcr.io/soerennb/version-tracker:${VERSION:-latest}
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - app_storage:/var/www/html/storage
+
+  db:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  app_storage:
+  db_data:

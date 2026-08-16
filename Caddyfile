@@ -1,0 +1,4 @@
+{$CADDY_DOMAIN} {
+    email {$CADDY_EMAIL}
+    reverse_proxy app:80
+}

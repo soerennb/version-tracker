@@ -1,0 +1,14 @@
+.beads
+.dolt
+.env
+.env.*
+.git
+.github
+.idea
+.phpunit.cache
+.vscode
+node_modules
+public/build
+public/hot
+storage
+vendor

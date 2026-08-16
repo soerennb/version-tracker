@@ -1,0 +1,50 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\UserRole;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class InstallApplicationCommandTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_it_creates_an_administrator_for_an_empty_application(): void
+    {
+        $this->artisan('app:install')
+            ->expectsConfirmation('Create demo data?', 'no')
+            ->expectsQuestion('Administrator name', 'Administrator')
+            ->expectsQuestion('Administrator email', 'admin@example.com')
+            ->expectsQuestion('Administrator password (at least 12 characters)', 'secure-password')
+            ->assertSuccessful();
+
+        $administrator = User::query()->sole();
+
+        $this->assertSame('Administrator', $administrator->name);
+        $this->assertSame('admin@example.com', $administrator->email);
+        $this->assertSame(UserRole::ADMIN, $administrator->role);
+    }
+
+    public function test_it_seeds_demo_data_when_requested(): void
+    {
+        $this->artisan('app:install --demo')
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'demo@example.com',
+            'role' => UserRole::ADMIN->value,
+        ]);
+        $this->assertDatabaseHas('software', ['name' => 'Aurora Suite']);
+    }
+
+    public function test_it_refuses_to_initialize_an_application_with_existing_users(): void
+    {
+        User::factory()->create();
+
+        $this->artisan('app:install')
+            ->expectsOutputToContain('Installation stopped because one or more users already exist.')
+            ->assertFailed();
+    }
+}

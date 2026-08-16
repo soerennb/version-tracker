@@ -89,3 +89,77 @@ jobs:
         with:
           name: frontend-build
           path: public/build
+
+  mariadb:
+    name: MariaDB integration tests
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mariadb:11
+        env:
+          MARIADB_DATABASE: versiontracker
+          MARIADB_USER: versiontracker
+          MARIADB_PASSWORD: versiontracker
+          MARIADB_ROOT_PASSWORD: root
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+        ports:
+          - 3306:3306
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer
+          extensions: mbstring, pdo_mysql
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Run PHP tests with MariaDB
+        env:
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mariadb
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: versiontracker
+          DB_USERNAME: versiontracker
+          DB_PASSWORD: versiontracker
+        run: php artisan test
+
+  container:
+    name: Container smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build application image
+        run: docker build --tag versiontracker:test .
+
+      - name: Start application container
+        run: |
+          docker run --detach --name versiontracker --publish 8080:80 \
+            --env APP_ENV=production \
+            --env APP_DEBUG=false \
+            --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            versiontracker:test
+
+      - name: Check health endpoint
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/up; then
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          docker logs versiontracker
+          exit 1

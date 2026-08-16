@@ -12,13 +12,13 @@ VersionTracker is a Laravel 13 application that centralizes software versions, r
 ## Stack
 
 - PHP 8.3 · Laravel 13 · Livewire 4 · Filament 5
-- MySQL/PostgreSQL/SQLite (Default: SQLite)
-- Node 20+ · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
+- MariaDB/MySQL/PostgreSQL/SQLite (Default: SQLite)
+- Node 22.18+ · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
 
 ## Requirements
 
 - PHP >= 8.3 + Composer 2.x
-- Node.js >= 20 + npm 10
+- Node.js >= 22.18 + npm 10
 - SQLite (default) or an alternative database
 
 ## Installation
@@ -29,43 +29,25 @@ VersionTracker is a Laravel 13 application that centralizes software versions, r
    cd versiontracker
    ```
 
-2. **Install Composer Dependencies**
+2. **Install the Application**
    ```bash
-   composer install
+   composer run setup
    ```
+   This creates the SQLite database, generates the application key, runs migrations, installs locked frontend dependencies, and builds the assets.
 
-3. **Prepare Environment**
+3. **Start Application**
    ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
-   - For SQLite: `touch database/database.sqlite` and leave `DB_CONNECTION=sqlite` in `.env`.
-   - For MySQL/Postgres: set appropriate `DB_*` variables.
-
-4. **Run Migrations & Seeders**
-   ```bash
-   php artisan migrate --seed
-   ```
-   This generates demo data including users & releases.
-
-5. **Load Front-End Dependencies**
-   ```bash
-   npm install
-   npm run dev
-   ```
-   For production: `npm run build`.
-
-6. **Start Application**
-   ```bash
-   php artisan serve
+   composer run dev
    ```
    App available at `http://localhost:8000`. The Filament panel is at `/admin`.
+
+For demo data, run `php artisan db:seed` after setup.
 
 ## Demo Accounts
 
 | Environment | User              | Password  |
 | ----------- | ----------------- | --------- |
-| Filament Admin | `demo@example.org` | `password` |
+| Filament Admin | `demo@example.com` | `password` |
 
 ## Frontend Access
 
@@ -80,12 +62,39 @@ VersionTracker is a Laravel 13 application that centralizes software versions, r
 - **Build**: `npm run build`
 - **Local App Stack**: `composer run dev`
 
-## Deployment Notes
+## Self-Hosting with Docker
 
-- `php artisan migrate --force`
-- `npm run build` + Deploy assets under `public/build`
-- Adapt `.env` to production environment (APP_URL, DB, QUEUE_CONNECTION etc.)
-- `php artisan storage:link` if not already done
+Each `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker`. Pin a concrete release tag in production rather than using `latest`.
+
+### Existing reverse proxy or local network
+
+```bash
+git clone https://github.com/soerennb/version-tracker.git
+cd version-tracker
+./install.sh install
+```
+
+Choose `N` for Caddy, then enter the release tag (for example `v0.1.0`) and the exposed HTTP port. Point your existing reverse proxy at this port and configure `TRUSTED_PROXIES` in `.env.docker` with the proxy address.
+
+### Public server with automatic HTTPS
+
+```bash
+git clone https://github.com/soerennb/version-tracker.git
+cd version-tracker
+./install.sh install
+```
+
+Choose `Y` for Caddy, provide a domain whose DNS already points to the server, and provide an ACME email address. Ports 80 and 443 must be free. The installer generates secrets, initializes MariaDB, asks whether to load demo data, and otherwise creates the first administrator interactively.
+
+### Updating
+
+```bash
+./install.sh update
+```
+
+Enter the next release tag and the active proxy mode. The update pulls the image, runs database migrations, rebuilds Laravel caches, and restarts the application. Back up both the MariaDB volume and the `app_storage` volume before upgrades.
+
+The base Compose file remains internal-only. For manual operation, use either `compose.proxy.yml` for a direct HTTP port or `compose.caddy.yml` for Caddy; always pass `--env-file .env.docker`.
 
 ## License
 

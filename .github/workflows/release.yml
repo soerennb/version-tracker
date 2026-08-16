@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v0.*.*"
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish container and release notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify release tag belongs to master
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer
+          extensions: mbstring, pdo_sqlite, sqlite3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci --no-audit --fund=false
+
+      - name: Validate release
+        env:
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        run: |
+          php artisan test
+          npm run build
+          composer audit --no-interaction --abandoned=report
+          npm audit --omit=dev --audit-level=high
+
+      - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY: ghcr.io
+          USERNAME: ${{ github.actor }}
+          PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$PASSWORD" | docker login "$REGISTRY" --username "$USERNAME" --password-stdin
+
+      - name: Publish application image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          MINOR_TAG="${TAG%.*}"
+          docker build \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --tag "$IMAGE:$TAG" \
+            --tag "$IMAGE:$MINOR_TAG" \
+            --tag "$IMAGE:latest" \
+            .
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:$MINOR_TAG"
+          docker push "$IMAGE:latest"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes --title "$GITHUB_REF_NAME"
