@@ -27,6 +27,19 @@ class InstallApplicationCommandTest extends TestCase
         $this->assertSame(UserRole::ADMIN, $administrator->role);
     }
 
+    public function test_it_accepts_administrator_identity_options_for_unattended_installation(): void
+    {
+        $this->artisan('app:install --no-demo --admin-name="Automated Administrator" --admin-email=automated@example.com')
+            ->expectsQuestion('Administrator password (at least 12 characters)', 'secure-password')
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'Automated Administrator',
+            'email' => 'automated@example.com',
+            'role' => UserRole::ADMIN->value,
+        ]);
+    }
+
     public function test_it_seeds_demo_data_when_requested(): void
     {
         $this->artisan('app:install --demo')

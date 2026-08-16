@@ -89,6 +89,50 @@ jobs:
           docker logs versiontracker
           exit 1
 
+      - name: Scan published image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.image.outputs.digest }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+
+      - name: Validate published installer path
+        env:
+          VERSION: ${{ github.ref_name }}
+          COMPOSE_PROJECT_NAME: versiontracker-release-install
+        run: |
+          test -x install.sh
+          printf '%s\n' 'Release Test Password 2026' | ./install.sh install \
+            --version "$VERSION" \
+            --mode proxy \
+            --port 18080 \
+            --admin-name 'Release Test' \
+            --admin-email release-test@example.invalid \
+            --admin-password-stdin
+          ./install.sh status
+          backup_directory="$(./install.sh backup)"
+          test -s "$backup_directory/database.sql"
+          test -s "$backup_directory/storage.tar.gz"
+
+      - name: Build deployment bundle
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          bundle="versiontracker-deploy-${VERSION}.tar.gz"
+          tar --create --gzip --file "$bundle" \
+            --transform "s,^,versiontracker-deploy-${VERSION}/," \
+            install.sh compose.yml compose.proxy.yml compose.caddy.yml Caddyfile .env.docker.example docs/self-hosting.md
+          sha256sum "$bundle" > "${bundle}.sha256"
+
+      - name: Clean up release installation test
+        if: always()
+        env:
+          COMPOSE_PROJECT_NAME: versiontracker-release-install
+        run: docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml down --volumes --remove-orphans
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,4 +142,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --generate-notes \
             --title "$GITHUB_REF_NAME" \
-            --notes $'### Container image\n\n`'"$IMAGE@$DIGEST"$'\n\n### Upgrade notes\n\nSee the self-hosting guide for backup, update, and rollback instructions.'
+            --notes $'### Container image\n\n`'"$IMAGE@$DIGEST"$'\n\n### Deployment bundle\n\nDownload the `versiontracker-deploy-` archive and verify its SHA-256 checksum before installation.\n\n### Upgrade notes\n\nSee the self-hosting guide for backup, update, and rollback instructions.' \
+            "versiontracker-deploy-${GITHUB_REF_NAME}.tar.gz" \
+            "versiontracker-deploy-${GITHUB_REF_NAME}.tar.gz.sha256"

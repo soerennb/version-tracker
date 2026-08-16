@@ -4,7 +4,7 @@ services:
       TRUSTED_PROXIES: "*"
 
   caddy:
-    image: caddy:2
+    image: ${CADDY_IMAGE:-caddy:2.11.4}
     depends_on:
       app:
         condition: service_healthy
