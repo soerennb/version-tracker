@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\Language;
 use App\Enums\VersionStatus;
+use App\Enums\VulnerabilityStatus;
 use App\Models\FileAttachment;
 use App\Models\Software;
 use App\Models\SoftwareDependency;
@@ -29,7 +30,10 @@ class PublicVersionCompareTest extends TestCase
         TextContent::factory()->for($left)->create(['language' => Language::DE, 'title' => 'Old notes']);
         TextContent::factory()->for($right)->create(['language' => Language::DE, 'title' => 'New notes']);
         FileAttachment::factory()->for($right)->create(['filename' => 'new.zip']);
-        Vulnerability::factory()->for($left, 'affectedVersion')->create(['cve_id' => 'CVE-2026-1000']);
+        Vulnerability::factory()->for($left, 'affectedVersion')->create([
+            'cve_id' => 'CVE-2026-1000',
+            'status' => VulnerabilityStatus::OPEN,
+        ]);
         SoftwareDependency::factory()->create([
             'software_id' => $product->id,
             'depends_on_software_id' => $dependency->id,

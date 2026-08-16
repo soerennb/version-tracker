@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use Database\Seeders\DemoDataSeeder;
-use Database\Seeders\DemoUserSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 

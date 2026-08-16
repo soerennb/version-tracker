@@ -255,6 +255,15 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Do not run `vendor/bin/pint --test`, simply run `vendor/bin/pint` to fix any formatting issues.
 
 
+=== github-actions/core rules ===
+
+## GitHub Actions CI
+
+- Continuous Integration runs on pull requests and pushes to `master`; it checks PHP formatting, PHPUnit, and the Vite production build.
+- CI is validation-only: do not add deployment steps, repository write permissions, or secrets without explicit approval.
+- Before handing off PHP or frontend changes, run the applicable local equivalent of the CI checks. CI runs full Pint and fails if it produces a diff.
+
+
 === phpunit/core rules ===
 
 ## PHPUnit Core
