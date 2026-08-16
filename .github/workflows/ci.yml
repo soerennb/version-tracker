@@ -177,6 +177,7 @@ jobs:
         run: |
           cp .env.docker.example .env.docker
           sed -i 's/^VERSION=$/VERSION=test/' .env.docker
+          sed -i 's/^DEPLOYMENT_MODE=$/DEPLOYMENT_MODE=proxy/' .env.docker
           sed -i 's/^APP_KEY=$/APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=/' .env.docker
           sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=versiontracker/' .env.docker
           sed -i 's/^DB_ROOT_PASSWORD=$/DB_ROOT_PASSWORD=root/' .env.docker
@@ -218,6 +219,7 @@ jobs:
           done
 
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY db sh -c 'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"' < "$backup_directory/database.sql"
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" --skip-column-names --execute="SELECT COUNT(*) FROM migrations"' | grep --extended-regexp '^[1-9][0-9]*$'
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app sh -c 'tar -xzf - -C /var/www/html' < "$backup_directory/storage.tar.gz"
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app
 
