@@ -21,7 +21,7 @@ COPY public ./public
 COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.4-apache-bookworm
+FROM php:8.5-apache-bookworm
 
 RUN apt-get update \
     && apt-get upgrade --yes \
