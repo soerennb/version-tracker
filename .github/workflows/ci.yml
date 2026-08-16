@@ -234,7 +234,10 @@ jobs:
 
       - name: Clean up containers
         if: always()
-        run: docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml down --volumes --remove-orphans
+        run: |
+          if [[ -f .env.docker ]]; then
+            docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml down --volumes --remove-orphans
+          fi
 
   compose:
     name: Compose configuration
