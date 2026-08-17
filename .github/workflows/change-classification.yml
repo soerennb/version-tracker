@@ -1,0 +1,90 @@
+name: Change classification
+
+on:
+  workflow_call:
+    outputs:
+      automation:
+        description: GitHub Actions workflows changed
+        value: ${{ jobs.classify.outputs.automation }}
+      backend:
+        description: Laravel runtime or tests changed
+        value: ${{ jobs.classify.outputs.backend }}
+      dependencies:
+        description: Composer or npm dependencies changed
+        value: ${{ jobs.classify.outputs.dependencies }}
+      frontend:
+        description: Frontend sources or build configuration changed
+        value: ${{ jobs.classify.outputs.frontend }}
+      infrastructure:
+        description: Container or deployment configuration changed
+        value: ${{ jobs.classify.outputs.infrastructure }}
+      source:
+        description: Application source code changed
+        value: ${{ jobs.classify.outputs.source }}
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  classify:
+    name: Classify changed files
+    runs-on: ubuntu-latest
+    outputs:
+      automation: ${{ steps.filter.outputs.automation }}
+      backend: ${{ steps.filter.outputs.backend }}
+      dependencies: ${{ steps.filter.outputs.dependencies }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      infrastructure: ${{ steps.filter.outputs.infrastructure }}
+      source: ${{ steps.filter.outputs.source }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Classify changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            automation:
+              - '.github/workflows/**'
+            backend:
+              - 'app/**'
+              - 'artisan'
+              - 'bootstrap/**'
+              - 'composer.json'
+              - 'composer.lock'
+              - 'config/**'
+              - 'database/**'
+              - 'phpunit.xml'
+              - 'resources/lang/**'
+              - 'resources/views/**'
+              - 'routes/**'
+              - 'tests/**'
+            dependencies:
+              - 'composer.json'
+              - 'composer.lock'
+              - 'package.json'
+              - 'package-lock.json'
+            frontend:
+              - 'package.json'
+              - 'package-lock.json'
+              - 'resources/css/**'
+              - 'resources/js/**'
+              - 'vite.config.*'
+            infrastructure:
+              - '.env.docker.example'
+              - 'Caddyfile'
+              - 'Dockerfile'
+              - 'compose*.yml'
+              - 'install.sh'
+            source:
+              - 'app/**'
+              - 'bootstrap/**'
+              - 'config/**'
+              - 'database/**'
+              - 'resources/css/**'
+              - 'resources/js/**'
+              - 'resources/lang/**'
+              - 'resources/views/**'
+              - 'routes/**'

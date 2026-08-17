@@ -4,15 +4,34 @@ on:
   pull_request:
   push:
     branches:
-      - main
       - master
   schedule:
     - cron: "0 5 * * 1"
 
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    name: Change classification
+    if: github.event_name != 'schedule'
+    uses: ./.github/workflows/change-classification.yml
+
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    needs: changes
+    if: >-
+      always() && (
+        github.event_name == 'schedule' ||
+        needs.changes.outputs.dependencies == 'true' ||
+        needs.changes.outputs.automation == 'true'
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -59,6 +78,12 @@ jobs:
   sast:
     name: SAST
     runs-on: ubuntu-latest
+    needs: changes
+    if: >-
+      always() && (
+        github.event_name == 'schedule' ||
+        (github.ref == 'refs/heads/master' && needs.changes.outputs.source == 'true')
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -70,3 +95,19 @@ jobs:
             p/php
             p/owasp-top-ten
             p/secrets
+
+  gate:
+    name: Security gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - changes
+      - dependency-audit
+      - secret-scan
+      - sast
+    steps:
+      - name: Require successful executed checks
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: exit 1
