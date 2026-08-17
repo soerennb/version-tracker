@@ -259,7 +259,8 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ## GitHub Actions CI
 
-- Continuous Integration runs on pull requests and pushes to `master`; it checks PHP formatting, PHPUnit, the Vite production build, MariaDB compatibility, Compose-based container initialization, deployment configuration, and the installer shell script.
+- Continuous Integration runs on pull requests and pushes to `master`. It classifies changed files and runs only the relevant checks: backend changes receive the Vite build plus PHP and MariaDB tests; frontend changes receive the Vite build; infrastructure changes receive Compose, installer, and container backup/restore checks. Workflow changes run the full CI suite.
+- Security Audit runs a secret scan on every pull request and `master` push. Dependency audits run for dependency or workflow changes; SAST runs for source changes on `master` and in the scheduled weekly audit. The required merge checks are `CI gate` and `Security gate`.
 - CI is validation-only: do not add deployment steps, repository write permissions, or secrets without explicit approval.
 - The frontend workflows use Node.js 24; local frontend checks require Node.js 22.18 or later.
 - Tags matching `v0.*.*` validate the release again, publish a GHCR container image with provenance and an SBOM, smoke-test its digest, and generate GitHub release notes; they must not deploy the application.

@@ -1,6 +1,6 @@
 # Releasing
 
-Releases are deliberately tag-driven. A maintainer creates a concrete `v0.x.y` tag only after the `master` branch CI is green.
+Releases are deliberately tag-driven. A maintainer creates a concrete `v0.x.y` tag only after the `master` branch `CI gate` and `Security gate` are green.
 
 ## Publish a release
 
@@ -13,7 +13,7 @@ Releases are deliberately tag-driven. A maintainer creates a concrete `v0.x.y` t
    git push origin v0.1.0
    ```
 
-4. Verify the Release workflow. It repeats application validation, builds and publishes the container with provenance and an SBOM, smoke-tests the published image by digest, and creates the GitHub Release.
+4. Verify the Release workflow. It repeats the complete release validation (frontend build, application tests, and dependency audits) for the immutable tag, builds and publishes the container with provenance and an SBOM, smoke-tests the published image by digest, and creates the GitHub Release.
 5. Check the generated release notes. Add a concise **Upgrade notes** section that calls out migrations, changed environment variables, deprecations, and any manual operator action.
 
 ## Published images
