@@ -8,7 +8,7 @@ RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --opt
 COPY . .
 RUN composer dump-autoload --no-dev --classmap-authoritative --no-scripts
 
-FROM node:24-bookworm-slim AS frontend
+FROM node:26-bookworm-slim AS frontend
 
 WORKDIR /var/www/html
 
