@@ -16,7 +16,9 @@ use App\Notifications\SecurityAlertNotification;
 use App\Notifications\VersionApprovedNotification;
 use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class NotificationRecipientsTest extends TestCase
@@ -139,5 +141,19 @@ class NotificationRecipientsTest extends TestCase
         Notification::assertSentTo($admin, LifecycleAlertNotification::class);
         Notification::assertSentTo($owner, LifecycleAlertNotification::class);
         Notification::assertNotSentTo($editor, LifecycleAlertNotification::class);
+    }
+
+    public function test_notifications_are_queued_on_the_notifications_queue(): void
+    {
+        Queue::fake();
+
+        User::factory()->create([
+            'role' => UserRole::ADMIN,
+        ]);
+        $version = Version::factory()->create();
+
+        app(NotificationService::class)->notifyVersionApproved($version);
+
+        Queue::assertPushedOn('notifications', SendQueuedNotifications::class);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\SubscriptionEvent;
 use App\Enums\UserRole;
 use App\Enums\VulnerabilitySeverity;
+use App\Models\EolAlertDelivery;
 use App\Models\User;
 use App\Models\Version;
 use App\Models\Vulnerability;
@@ -13,10 +14,16 @@ use App\Notifications\LifecycleAlertNotification;
 use App\Notifications\SecurityAlertNotification;
 use App\Notifications\VersionApprovedNotification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 class NotificationService
 {
+    /**
+     * @var array<int, int>
+     */
+    private const EOL_ALERT_WINDOWS = [7, 30, 90];
+
     public function notifyVersionApproved(Version $version): void
     {
         Notification::send($this->releaseRecipients($version, SubscriptionEvent::RELEASE), new VersionApprovedNotification($version));
@@ -37,10 +44,67 @@ class NotificationService
         }
     }
 
-    public function notifyUpcomingEol(int $days = 90): void
+    public function notifyUpcomingEol(int $days = 90): int
     {
-        app(LifecycleService::class)->upcomingEol($days)
-            ->each(fn (Version $version): mixed => Notification::send($this->releaseRecipients($version, SubscriptionEvent::EOL), new LifecycleAlertNotification($version)));
+        return app(LifecycleService::class)->upcomingEol($days)
+            ->reduce(function (int $dispatchedAlerts, Version $version): int {
+                $windowDays = $this->eolAlertWindow($version);
+
+                if ($windowDays === null || ! $this->dispatchEolAlert($version, $windowDays)) {
+                    return $dispatchedAlerts;
+                }
+
+                return $dispatchedAlerts + 1;
+            }, 0);
+    }
+
+    private function eolAlertWindow(Version $version): ?int
+    {
+        if ($version->eol_date === null) {
+            return null;
+        }
+
+        $daysUntilEol = (int) today()->diffInDays($version->eol_date, false);
+
+        foreach (self::EOL_ALERT_WINDOWS as $windowDays) {
+            if ($daysUntilEol <= $windowDays) {
+                return $windowDays;
+            }
+        }
+
+        return null;
+    }
+
+    private function dispatchEolAlert(Version $version, int $windowDays): bool
+    {
+        return DB::transaction(function () use ($version, $windowDays): bool {
+            $now = now();
+            $deliveryKey = [
+                'version_id' => $version->id,
+                'eol_date' => $version->eol_date->toDateString(),
+                'window_days' => $windowDays,
+            ];
+
+            if (EolAlertDelivery::query()->insertOrIgnore([
+                ...$deliveryKey,
+                'dispatched_at' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]) === 0) {
+                return false;
+            }
+
+            Notification::send($this->releaseRecipients($version, SubscriptionEvent::EOL), new LifecycleAlertNotification($version));
+
+            EolAlertDelivery::query()
+                ->where($deliveryKey)
+                ->update([
+                    'dispatched_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            return true;
+        });
     }
 
     protected function adminRecipients(): Collection

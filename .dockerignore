@@ -12,3 +12,4 @@ public/build
 public/hot
 storage
 vendor
+bootstrap/cache/*.php

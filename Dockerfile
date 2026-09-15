@@ -6,7 +6,8 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader --no-scripts --ignore-platform-req=ext-gd --ignore-platform-req=ext-intl
 
 COPY . .
-RUN composer dump-autoload --no-dev --classmap-authoritative --no-scripts
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && composer dump-autoload --no-dev --classmap-authoritative
 
 FROM node:26-bookworm-slim AS frontend
 

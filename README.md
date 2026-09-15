@@ -15,6 +15,12 @@ VersionTracker is a Laravel 13 application that centralizes software versions, r
 - MariaDB/MySQL/PostgreSQL/SQLite (Default: SQLite)
 - Node 22.18+ · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
 
+| Runtime context | PHP | Node.js |
+| --------------- | --- | ------- |
+| CI support floor | 8.4 | 24 |
+| Local development | >= 8.4.1 | >= 22.18 |
+| Production image | 8.5 | 26 |
+
 ## Requirements
 
 - PHP >= 8.4.1 + Composer 2.x
@@ -122,7 +128,7 @@ Choose `Y` for Caddy, provide a domain whose DNS already points to the server, a
 ./install.sh update
 ```
 
-Enter the next release tag. The update preserves the selected proxy mode, pulls the image, runs database migrations, rebuilds Laravel caches, and verifies the health endpoint.
+Enter the next release tag. The update preserves the selected proxy mode, stops the old application runtime, pulls the image, runs database migrations before recreating `app`, `worker`, and `scheduler`, rebuilds Laravel caches, and verifies the health endpoint.
 
 Use `./install.sh status` to inspect a deployment and `./install.sh backup` before upgrades. The complete [self-hosting guide](docs/self-hosting.md) covers configuration, backup, restore, and rollback. Maintainers should follow the [release guide](docs/releasing.md) when publishing a tag.
 

@@ -57,6 +57,10 @@ Important `.env.docker` settings:
 | `APP_URL`                           | Public URL used for generated links.                      |
 | `TRUSTED_HOSTS` / `TRUSTED_PROXIES` | Restrict the public hostname and trusted proxy addresses. |
 | `DB_PASSWORD` / `DB_ROOT_PASSWORD`  | Generated MariaDB credentials; keep them private.         |
+| `MAIL_MAILER`                       | Mail transport; replace `log` with a production transport. |
+| `MAIL_HOST` / `MAIL_PORT`           | SMTP host and port when using the SMTP transport.         |
+| `MAIL_USERNAME` / `MAIL_PASSWORD`   | SMTP credentials, when required by the mail provider.     |
+| `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` | Sender identity for lifecycle and security alerts.      |
 
 ## Operations
 
@@ -65,6 +69,8 @@ Check the running containers and application health:
 ```bash
 ./install.sh status
 ```
+
+The base Compose stack runs `app`, `db`, `worker`, and `scheduler`. The worker consumes queued notifications from the `notifications` queue, and the scheduler runs the lifecycle alert command daily at 08:00 UTC. Configure a real mail transport before expecting email delivery; `MAIL_MAILER=log` is the safe default for validation and writes messages to the application log.
 
 Back up MariaDB, Laravel storage, and the current environment file before every upgrade:
 
@@ -82,7 +88,7 @@ Upgrade by entering the next exact release tag:
 ./install.sh update
 ```
 
-The command pulls the image, migrates the database, refreshes Laravel caches, and verifies `/up`. If the health check fails, inspect logs with `docker compose --env-file .env.docker -f compose.yml -f compose.<mode>.yml logs` and return `VERSION` to the previous tag. Do not roll back after an irreversible migration without first restoring its backup.
+The command stops the old application runtime, pulls the image, runs database migrations before recreating `app`, `worker`, and `scheduler`, refreshes Laravel caches, and verifies `/up`. If the health check or a runtime service fails, inspect logs with `docker compose --env-file .env.docker -f compose.yml -f compose.<mode>.yml logs` and return `VERSION` to the previous tag. Do not roll back after an irreversible migration without first restoring its backup.
 
 ## Restore
 
@@ -92,6 +98,7 @@ Restore only into a stopped or isolated deployment. Select the Compose file matc
 docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up -d db
 docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec -T db sh -c 'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"' < backups/versiontracker-<timestamp>/database.sql
 docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app sh -c 'rm -rf storage/* && tar -xzf - -C /var/www/html' < backups/versiontracker-<timestamp>/storage.tar.gz
+docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up -d
 ```
 
 Use `compose.caddy.yml` in place of `compose.proxy.yml` for Caddy deployments. Restore the matching `environment.backup` only after reviewing its secrets and deployment settings.

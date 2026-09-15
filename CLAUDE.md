@@ -57,6 +57,12 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 - If a required sync or push is blocked, stop and report the exact command and error.
 <!-- END BEADS INTEGRATION -->
 
+## Runtime Matrix
+
+- CI support floor: PHP 8.4 and Node.js 24.
+- Local development: PHP >= 8.4.1 and Node.js >= 22.18.
+- Production image: PHP 8.5 and Node.js 26.
+
 
 ## Build & Test
 

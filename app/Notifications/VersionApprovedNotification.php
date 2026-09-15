@@ -4,10 +4,11 @@ namespace App\Notifications;
 
 use App\Models\Version;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class VersionApprovedNotification extends Notification
+class VersionApprovedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 

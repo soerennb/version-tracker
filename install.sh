@@ -266,6 +266,26 @@ wait_for_health() {
     exit 1
 }
 
+wait_for_runtime_services() {
+    local compose_file="$1"
+
+    for _ in {1..30}; do
+        if compose "$compose_file" ps --status running --services | grep -Fxq worker \
+            && compose "$compose_file" ps --status running --services | grep -Fxq scheduler; then
+            echo 'Queue worker and scheduler are running.'
+
+            return
+        fi
+
+        sleep 2
+    done
+
+    compose "$compose_file" ps >&2
+    compose "$compose_file" logs --tail=100 worker scheduler >&2
+    echo 'Queue worker or scheduler failed to start.' >&2
+    exit 1
+}
+
 install() {
     preflight
 
@@ -278,6 +298,7 @@ install() {
     initialize_application "$compose_file"
     compose "$compose_file" up -d
     wait_for_health "$compose_file"
+    wait_for_runtime_services "$compose_file"
     compose "$compose_file" ps
 }
 
@@ -296,11 +317,13 @@ update() {
     set_environment_value VERSION "$version"
 
     compose "$compose_file" config >/dev/null
-    compose "$compose_file" pull app
-    compose "$compose_file" up -d app
-    compose "$compose_file" exec -T app php artisan migrate --force
+    compose "$compose_file" stop app worker scheduler
+    compose "$compose_file" pull
+    compose "$compose_file" run --rm app php artisan migrate --force
+    compose "$compose_file" up -d --force-recreate app worker scheduler
     compose "$compose_file" exec -T app php artisan optimize
     wait_for_health "$compose_file"
+    wait_for_runtime_services "$compose_file"
     compose "$compose_file" ps
 }
 
@@ -311,6 +334,7 @@ status() {
     compose_file="$(configured_compose_file)"
     compose "$compose_file" ps
     wait_for_health "$compose_file"
+    wait_for_runtime_services "$compose_file"
 }
 
 backup() {

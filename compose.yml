@@ -10,6 +10,43 @@ services:
     volumes:
       - app_storage:/var/www/html/storage
 
+  worker:
+    image: ${IMAGE_REPOSITORY:-ghcr.io/soerennb/version-tracker}:${VERSION:?Set VERSION to a concrete v0.x.y release tag}
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command:
+      - php
+      - artisan
+      - queue:work
+      - database
+      - --queue=notifications
+      - --sleep=3
+      - --tries=3
+      - --backoff=60
+      - --timeout=90
+      - --max-time=3600
+    volumes:
+      - app_storage:/var/www/html/storage
+
+  scheduler:
+    image: ${IMAGE_REPOSITORY:-ghcr.io/soerennb/version-tracker}:${VERSION:?Set VERSION to a concrete v0.x.y release tag}
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command:
+      - php
+      - artisan
+      - schedule:work
+    volumes:
+      - app_storage:/var/www/html/storage
+
   db:
     image: ${MARIADB_IMAGE:-mariadb:11.8.8}
     environment:

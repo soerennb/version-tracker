@@ -211,18 +211,26 @@ jobs:
         run: |
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach db
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app php artisan migrate --force
-          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app worker scheduler
 
+          healthy=false
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/up; then
-              exit 0
+              healthy=true
+              break
             fi
 
             sleep 2
           done
 
-          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml logs
-          exit 1
+          if [[ "$healthy" != true ]]; then
+            docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml logs
+            exit 1
+          fi
+
+          for service in worker scheduler; do
+            docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml ps --status running --services | grep --fixed-strings --line-regexp "$service"
+          done
 
       - name: Back up and restore application data
         run: |
@@ -245,7 +253,7 @@ jobs:
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY db sh -c 'exec mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"' < "$backup_directory/database.sql"
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" --skip-column-names --execute="SELECT COUNT(*) FROM migrations"' | grep --extended-regexp '^[1-9][0-9]*$'
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app sh -c 'tar -xzf - -C /var/www/html' < "$backup_directory/storage.tar.gz"
-          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app worker scheduler
 
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/up; then

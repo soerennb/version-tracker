@@ -8,16 +8,16 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 ## Foundational Context
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.3.24
-- filament/filament (FILAMENT) - v5
-- laravel/framework (LARAVEL) - v13
-- laravel/prompts (PROMPTS) - v0
-- laravel/sanctum (SANCTUM) - v4
-- livewire/livewire (LIVEWIRE) - v4
-- laravel/mcp (MCP) - v0
-- laravel/pint (PINT) - v1
-- laravel/sail (SAIL) - v1
-- phpunit/phpunit (PHPUNIT) - v12
+- php - 8.4.25
+- filament/filament (FILAMENT) - v5.8.1
+- laravel/framework (LARAVEL) - v13.32.0
+- laravel/prompts (PROMPTS) - v0.3.24
+- laravel/sanctum (SANCTUM) - v4.3.3
+- livewire/livewire (LIVEWIRE) - v4.4.5
+- laravel/mcp (MCP) - v1.0.0
+- laravel/pint (PINT) - v1.32.1
+- laravel/sail (SAIL) - v1.67.0
+- phpunit/phpunit (PHPUNIT) - v13.3.4
 
 ## Conventions
 - You must follow all existing code conventions used in this application. When creating or editing a file, check sibling files for the correct structure, approach, naming.
