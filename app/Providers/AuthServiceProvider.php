@@ -13,6 +13,7 @@ use App\Policies\AuditLogPolicy;
 use App\Policies\FileAttachmentPolicy;
 use App\Policies\SoftwarePolicy;
 use App\Policies\TextContentPolicy;
+use App\Policies\UserPolicy;
 use App\Policies\VersionPolicy;
 use App\Policies\VulnerabilityPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
@@ -32,6 +33,7 @@ class AuthServiceProvider extends ServiceProvider
         TextContent::class => TextContentPolicy::class,
         AuditLog::class => AuditLogPolicy::class,
         Vulnerability::class => VulnerabilityPolicy::class,
+        User::class => UserPolicy::class,
     ];
 
     /**
@@ -42,6 +44,10 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Gate::before(function (User $user): ?bool {
+            if (! $user->isActive()) {
+                return false;
+            }
+
             return $user->isAdmin() ? true : null;
         });
 

@@ -29,6 +29,7 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
         'password',
         'role',
         'abilities',
+        'is_active',
     ];
 
     /**
@@ -53,12 +54,19 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
             'password' => 'hashed',
             'role' => UserRole::class,
             'abilities' => 'array',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->resolveRole() !== UserRole::VIEWER;
+        return $this->isActive() && $this->resolveRole() !== UserRole::VIEWER;
+    }
+
+    public function isActive(): bool
+    {
+        return (bool) ($this->is_active ?? true);
     }
 
     public function isAdmin(): bool
@@ -68,6 +76,10 @@ class User extends Authenticatable implements FilamentUser, MustVerifyEmail
 
     public function hasAbility(string $ability): bool
     {
+        if (! $this->isActive()) {
+            return false;
+        }
+
         if ($this->isAdmin()) {
             return true;
         }

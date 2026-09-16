@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Listeners\RecordLastLogin;
 use App\Models\Software;
 use App\Models\TextContent;
 use App\Models\User;
@@ -12,11 +13,13 @@ use App\Observers\TextContentObserver;
 use App\Observers\VersionObserver;
 use App\Observers\VersionReviewObserver;
 use App\Services\RuntimeSettings;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -38,6 +41,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(Login::class, RecordLastLogin::class);
+
         Queue::before(function (JobProcessing $event): void {
             app(RuntimeSettings::class)->applyRequestSettings();
         });

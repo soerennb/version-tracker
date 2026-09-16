@@ -59,5 +59,9 @@ return [
         'override_release_readiness' => 'Override release readiness',
         'view_audit_logs' => 'View audit logs',
         'export_data' => 'Export data',
+        'manage_dependencies' => 'Manage dependencies',
+        'manage_users' => 'Manage users',
+        'manage_settings' => 'Manage settings',
+        'manage_advanced_settings' => 'Manage advanced settings',
     ],
 ];

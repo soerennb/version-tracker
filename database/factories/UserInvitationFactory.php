@@ -25,6 +25,7 @@ class UserInvitationFactory extends Factory
             'invited_by' => User::factory()->admin(),
             'expires_at' => now()->addDays(7),
             'accepted_at' => null,
+            'revoked_at' => null,
         ];
     }
 }

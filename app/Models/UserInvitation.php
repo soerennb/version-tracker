@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\InvitationStatus;
 use Database\Factories\UserInvitationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,7 @@ class UserInvitation extends Model
         'invited_by',
         'expires_at',
         'accepted_at',
+        'revoked_at',
     ];
 
     /**
@@ -39,6 +41,7 @@ class UserInvitation extends Model
         return [
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
+            'revoked_at' => 'datetime',
         ];
     }
 
@@ -49,6 +52,16 @@ class UserInvitation extends Model
 
     public function isUsable(): bool
     {
-        return $this->accepted_at === null && $this->expires_at?->isFuture() === true;
+        return $this->status() === InvitationStatus::OPEN;
+    }
+
+    public function status(): InvitationStatus
+    {
+        return match (true) {
+            $this->accepted_at !== null => InvitationStatus::ACCEPTED,
+            $this->revoked_at !== null => InvitationStatus::REVOKED,
+            $this->expires_at?->isPast() => InvitationStatus::EXPIRED,
+            default => InvitationStatus::OPEN,
+        };
     }
 }

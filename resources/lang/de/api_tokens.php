@@ -59,5 +59,9 @@ return [
         'override_release_readiness' => 'Readiness-Prüfung übersteuern',
         'view_audit_logs' => 'Audit-Protokoll anzeigen',
         'export_data' => 'Daten exportieren',
+        'manage_dependencies' => 'Abhängigkeiten verwalten',
+        'manage_users' => 'Nutzer verwalten',
+        'manage_settings' => 'Einstellungen verwalten',
+        'manage_advanced_settings' => 'Erweiterte Einstellungen verwalten',
     ],
 ];

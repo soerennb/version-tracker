@@ -39,6 +39,7 @@ class AuthController extends Controller
             'email' => Str::lower($data['email']),
             'password' => $data['password'],
             'role' => UserRole::VIEWER,
+            'is_active' => true,
         ]);
 
         if (! $this->runtimeSettings->access()->email_verification_required) {
@@ -65,6 +66,7 @@ class AuthController extends Controller
         if (! Auth::guard('web')->attempt([
             'email' => Str::lower($data['email']),
             'password' => $data['password'],
+            'is_active' => true,
         ], (bool) ($data['remember'] ?? false))) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.failed')],

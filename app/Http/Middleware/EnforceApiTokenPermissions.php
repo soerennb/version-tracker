@@ -12,11 +12,16 @@ class EnforceApiTokenPermissions
 {
     public function handle(Request $request, Closure $next, string $access = 'rest'): Response
     {
+        $user = $request->user();
+
         if (! $request->bearerToken() && $access === 'rest') {
+            abort_if($user && ! $user->isActive(), 403);
+
             return $next($request);
         }
-        $user = $request->user();
+
         abort_unless($request->bearerToken() && $user, 401);
+        abort_unless($user->isActive(), 403);
         $tokens = app(ApiTokenService::class);
         $tokens->authorize($user, 'access_'.$access);
         if (app(RuntimeSettings::class)->access()->email_verification_required) {

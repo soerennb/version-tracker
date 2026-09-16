@@ -56,7 +56,13 @@ class ApiTokenService
     {
         $token = $user->currentAccessToken();
 
-        return $token instanceof PersonalAccessToken && $token->exists && $token->tokenable_type === $user->getMorphClass() && (int) $token->tokenable_id === $user->id && (! $token->expires_at || $token->expires_at->isFuture()) && $token->can($ability);
+        return $user->isActive()
+            && $token instanceof PersonalAccessToken
+            && $token->exists
+            && $token->tokenable_type === $user->getMorphClass()
+            && (int) $token->tokenable_id === $user->id
+            && (! $token->expires_at || $token->expires_at->isFuture())
+            && $token->can($ability);
     }
 
     public function authorize(User $user, string $ability): void
