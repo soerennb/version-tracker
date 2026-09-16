@@ -186,6 +186,7 @@ class RuntimeSettings
             'security.force_hsts' => $security->force_hsts,
             'security.upload_max_kb' => $security->upload_max_kb,
             'security.upload_allowed_extensions' => $security->upload_allowed_extensions,
+            'security.risk_intelligence_enabled' => $security->risk_intelligence_enabled,
             'release_governance.require_four_eyes_for_critical_releases' => $governance->require_four_eyes_for_critical_releases,
         ]);
 

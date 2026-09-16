@@ -33,6 +33,12 @@ return [
         'manage_users',
         'manage_settings',
         'manage_advanced_settings',
+        'upload_sboms',
+        'view_sboms',
+        'view_readiness',
+        'manage_exceptions',
+        'export_compliance',
+        'manage_feeds',
     ],
     'role_abilities' => [
         UserRole::ADMIN->value => [
@@ -58,6 +64,9 @@ return [
             'view_vulnerabilities',
             'create_vulnerabilities',
             'edit_vulnerabilities',
+            'upload_sboms',
+            'view_sboms',
+            'view_readiness',
         ],
         UserRole::VIEWER->value => [
             'view_software',

@@ -91,4 +91,14 @@ class Version extends Model
     {
         return $this->hasMany(VersionSource::class);
     }
+
+    public function sbomDocuments(): HasMany
+    {
+        return $this->hasMany(SbomDocument::class);
+    }
+
+    public function releaseExceptions(): HasMany
+    {
+        return $this->hasMany(ReleaseException::class);
+    }
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Public\DownloadController;
+use App\Http\Controllers\Public\ReleaseFeedController;
 use App\Http\Controllers\PublicSecurityController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,9 @@ Route::get('/account/verify-email/{id}/{hash}', [AuthController::class, 'verify'
 Route::get('/security', [PublicSecurityController::class, 'index'])
     ->middleware('public.feature:security')
     ->name('public.security');
+Route::get('/feed/releases.xml', ReleaseFeedController::class)
+    ->middleware(['public.feature:catalog', 'throttle:api'])
+    ->name('public.feed.releases');
 Route::get('/downloads/{version}/{fileAttachment}', DownloadController::class)
     ->middleware('throttle:api')
     ->name('public.download');

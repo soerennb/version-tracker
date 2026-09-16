@@ -18,6 +18,9 @@ return [
         'invalid_dependencies' => 'Dependency-Constraints sind nicht erfüllt',
         'missing_attachments' => 'Kein Release-Anhang hochgeladen',
         'missing_lifecycle' => 'Kein Support-, LTS- oder EOL-Lifecycle gesetzt',
+        'missing_sbom' => 'Keine verarbeitete SBOM für dieses Release hochgeladen',
+        'stale_sbom' => 'Die letzte SBOM ist älter als das konfigurierte Aktualitätsfenster',
+        'blocking_component_findings' => 'Blockierende Schwachstellen in SBOM-Komponenten gefunden',
     ],
     'review' => [
         'reject_reason' => 'Ablehnungsgrund',

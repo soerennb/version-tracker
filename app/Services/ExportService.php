@@ -88,6 +88,96 @@ class ExportService
         return $this->path($filename);
     }
 
+    public function exportCompliancePackage(Version $version): string
+    {
+        $version->load([
+            'software',
+            'sbomDocuments.components',
+            'sbomDocuments.findings',
+            'releaseExceptions.owner',
+            'fileAttachments',
+            'vulnerabilities',
+        ]);
+
+        $payload = [
+            'schema_version' => 1,
+            'generated_at' => now()->toISOString(),
+            'version' => [
+                'id' => $version->id,
+                'software_id' => $version->software_id,
+                'software' => $version->software?->name,
+                'version_number' => $version->version_number,
+                'release_date' => $version->release_date?->toDateString(),
+                'status' => $version->status?->value,
+                'approval_status' => $version->approval_status?->value,
+            ],
+            'readiness' => app(ReleaseReadinessService::class)->evaluate($version),
+            'artifacts' => $version->fileAttachments->map(fn ($attachment): array => [
+                'id' => $attachment->id,
+                'filename' => $attachment->filename,
+                'artifact_type' => $attachment->artifact_type,
+                'mime_type' => $attachment->mime_type,
+                'size' => $attachment->size,
+                'checksum' => $attachment->checksum,
+                'checksum_algorithm' => $attachment->checksum_algorithm,
+                'verification_status' => $attachment->verification_status,
+            ])->values()->all(),
+            'sboms' => $version->sbomDocuments->map(fn ($document): array => [
+                'id' => $document->id,
+                'filename' => $document->filename,
+                'format' => $document->format,
+                'spec_version' => $document->spec_version,
+                'serial_number' => $document->serial_number,
+                'document_hash' => $document->document_hash,
+                'source' => $document->source,
+                'status' => $document->status,
+                'parsed_at' => $document->parsed_at?->toISOString(),
+                'components' => $document->components->map(fn ($component): array => [
+                    'bom_ref' => $component->bom_ref,
+                    'package_type' => $component->package_type,
+                    'group_name' => $component->group_name,
+                    'name' => $component->name,
+                    'version' => $component->version,
+                    'purl' => $component->purl,
+                    'cpe' => $component->cpe,
+                    'supplier' => $component->supplier,
+                    'licenses' => $component->licenses ?? [],
+                    'hashes' => $component->hashes ?? [],
+                    'properties' => $component->properties ?? [],
+                ])->values()->all(),
+                'findings' => $document->findings->map(fn ($finding): array => [
+                    'external_id' => $finding->external_id,
+                    'source' => $finding->source,
+                    'severity' => $finding->severity?->value,
+                    'cvss_score' => $finding->cvss_score,
+                    'epss_score' => $finding->epss_score,
+                    'is_kev' => $finding->is_kev,
+                    'risk_score' => $finding->risk_score,
+                    'risk_factors' => $finding->risk_factors ?? [],
+                    'exploitability' => $finding->exploitability?->value,
+                    'status' => $finding->status?->value,
+                    'component_id' => $finding->sbom_component_id,
+                    'first_seen_at' => $finding->first_seen_at?->toISOString(),
+                    'last_seen_at' => $finding->last_seen_at?->toISOString(),
+                ])->values()->all(),
+            ])->values()->all(),
+            'release_exceptions' => $version->releaseExceptions->map(fn ($exception): array => [
+                'id' => $exception->id,
+                'check_code' => $exception->check_code,
+                'reason' => $exception->reason,
+                'expires_at' => $exception->expires_at?->toISOString(),
+                'approved_at' => $exception->approved_at?->toISOString(),
+                'revoked_at' => $exception->revoked_at?->toISOString(),
+                'owner' => $exception->owner?->name,
+            ])->values()->all(),
+        ];
+
+        $filename = $this->buildFilename('compliance', 'json');
+        Storage::disk($this->disk())->put($filename, json_encode($payload, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+        return $this->path($filename);
+    }
+
     protected function buildFilename(string $prefix, string $extension): string
     {
         return sprintf('%s/%s-%s.%s', trim($this->directory, '/'), $prefix, now()->format('Ymd-His').'-'.Str::random(6), $extension);

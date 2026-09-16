@@ -107,6 +107,34 @@
 
                 <section class="rounded-lg border border-gray-200 bg-white">
                     <div class="border-b border-gray-200 px-4 py-3">
+                        <h3 class="text-sm font-semibold text-gray-950">{{ __('filament.approval_cockpit.sbom') }}</h3>
+                    </div>
+                    @if (($readiness['sbom']['document_id'] ?? null) !== null)
+                        <dl class="grid grid-cols-2 gap-3 px-4 py-3 text-sm">
+                            <div>
+                                <dt class="text-gray-500">{{ __('filament.approval_cockpit.sbom_format') }}</dt>
+                                <dd class="font-medium text-gray-950">{{ strtoupper($readiness['sbom']['format'] ?? 'n/a') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">{{ __('filament.approval_cockpit.sbom_components') }}</dt>
+                                <dd class="font-medium text-gray-950">{{ number_format($readiness['sbom']['component_count'] ?? 0) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">{{ __('filament.approval_cockpit.sbom_findings') }}</dt>
+                                <dd class="font-medium text-gray-950">{{ number_format($readiness['sbom']['finding_count'] ?? 0) }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">{{ __('filament.approval_cockpit.sbom_age') }}</dt>
+                                <dd class="font-medium text-gray-950">{{ $readiness['sbom']['age_days'] ?? 'n/a' }} {{ __('filament.approval_cockpit.days') }}</dd>
+                            </div>
+                        </dl>
+                    @else
+                        <p class="px-4 py-3 text-sm text-gray-500">{{ __('filament.approval_cockpit.empty') }}</p>
+                    @endif
+                </section>
+
+                <section class="rounded-lg border border-gray-200 bg-white">
+                    <div class="border-b border-gray-200 px-4 py-3">
                         <h3 class="text-sm font-semibold text-gray-950">{{ __('filament.approval_cockpit.dependencies') }}</h3>
                     </div>
                     <div class="divide-y divide-gray-100">

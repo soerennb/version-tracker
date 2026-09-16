@@ -30,6 +30,7 @@ class PublicTimelineRequest extends FormRequest
             'software' => ['nullable', 'integer', 'exists:software,id'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'updated_since' => ['nullable', 'date'],
             'support' => ['nullable', Rule::enum(SupportStatus::class)],
             'security' => ['nullable', Rule::in(['clear', 'attention'])],
             'locale' => ['nullable', Rule::in(Language::values())],

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\FileAttachmentController;
 use App\Http\Controllers\Api\ImpactAnalysisController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\SbomController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\SoftwareDependencyController;
 use App\Http\Controllers\Api\SubscriptionController;
@@ -79,6 +80,15 @@ Route::middleware(['throttle:api', 'auth:sanctum', EnforceApiTokenPermissions::c
     Route::apiResource('versions.file-attachments', FileAttachmentController::class)
         ->shallow();
 
+    Route::get('versions/{version}/sboms', [SbomController::class, 'index']);
+    Route::post('versions/{version}/sboms', [SbomController::class, 'store']);
+    Route::get('sboms/{sbomDocument}', [SbomController::class, 'show']);
+    Route::post('sboms/{sbomDocument}/enrich', [SbomController::class, 'enrich']);
+    Route::get('versions/{version}/readiness', [SbomController::class, 'readiness']);
+    Route::get('versions/{version}/exceptions', [SbomController::class, 'exceptions']);
+    Route::post('versions/{version}/exceptions', [SbomController::class, 'storeException']);
+    Route::delete('release-exceptions/{releaseException}', [SbomController::class, 'destroyException']);
+
     Route::apiResource('software-dependencies', SoftwareDependencyController::class);
     Route::apiResource('vulnerabilities', VulnerabilityController::class);
 
@@ -98,5 +108,6 @@ Route::middleware(['throttle:api', 'auth:sanctum', EnforceApiTokenPermissions::c
         Route::get('versions/pdf', [ExportController::class, 'versionsPdf']);
         Route::get('software/csv', [ExportController::class, 'softwareCsv']);
         Route::get('audit-logs/csv', [ExportController::class, 'auditLogsCsv']);
+        Route::get('versions/{version}/compliance', [ExportController::class, 'compliance']);
     });
 });

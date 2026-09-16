@@ -56,6 +56,20 @@ class ManageSecuritySettings extends SettingsPage
                             ->required()
                             ->minValue(1)
                             ->maxValue(1048576),
+                        TextInput::make('sbom_max_kb')
+                            ->label(__('filament.settings.fields.sbom_max_kb'))
+                            ->numeric()
+                            ->required()
+                            ->minValue(1)
+                            ->maxValue(1048576),
+                        TextInput::make('sbom_max_components')
+                            ->label(__('filament.settings.fields.sbom_max_components'))
+                            ->numeric()
+                            ->required()
+                            ->minValue(1)
+                            ->maxValue(1000000),
+                        Toggle::make('risk_intelligence_enabled')
+                            ->label(__('filament.settings.fields.risk_intelligence_enabled')),
                         CheckboxList::make('upload_allowed_extensions')
                             ->label(__('filament.settings.fields.upload_allowed_extensions'))
                             ->options([

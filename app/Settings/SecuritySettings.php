@@ -12,6 +12,12 @@ class SecuritySettings extends Settings
 
     public int $upload_max_kb = 10240;
 
+    public int $sbom_max_kb = 20480;
+
+    public int $sbom_max_components = 10000;
+
+    public bool $risk_intelligence_enabled = false;
+
     /**
      * @var array<int, string>
      */
@@ -33,6 +39,9 @@ class SecuritySettings extends Settings
             'api_rate_limit_per_minute' => (int) config('security.api_rate_limit_per_minute', 60),
             'force_hsts' => (bool) config('security.force_hsts', false),
             'upload_max_kb' => (int) config('security.upload_max_kb', 10240),
+            'sbom_max_kb' => (int) config('security.sbom_max_kb', 20480),
+            'sbom_max_components' => (int) config('security.sbom_max_components', 10000),
+            'risk_intelligence_enabled' => (bool) config('security.risk_intelligence_enabled', false),
             'upload_allowed_extensions' => config('security.upload_allowed_extensions', [
                 'pdf', 'txt', 'csv', 'json', 'xml', 'md', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'zip',
             ]),

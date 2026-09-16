@@ -23,6 +23,9 @@ return [
     'api_rate_limit_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 60),
     'force_hsts' => (bool) env('SECURITY_FORCE_HSTS', false),
     'upload_max_kb' => (int) env('UPLOAD_MAX_KB', 10240),
+    'sbom_max_kb' => (int) env('SBOM_MAX_KB', 20480),
+    'sbom_max_components' => (int) env('SBOM_MAX_COMPONENTS', 10000),
+    'risk_intelligence_enabled' => (bool) env('RISK_INTELLIGENCE_ENABLED', false),
     'upload_allowed_extensions' => array_values(array_filter(array_map(
         static fn (string $extension): string => strtolower(trim($extension)),
         explode(',', (string) env(

@@ -28,6 +28,15 @@ class GovernanceSettings extends Settings
 
     public bool $allow_readiness_override = true;
 
+    /** Require a parsed and recent SBOM before a release can be approved. */
+    public bool $require_sbom = false;
+
+    /** Maximum age in days for an SBOM when SBOM approval is required. */
+    public int $sbom_max_age_days = 30;
+
+    /** Treat findings marked as actively exploitable as release blockers. */
+    public bool $block_active_exploits = true;
+
     public static function group(): string
     {
         return 'governance';
@@ -47,6 +56,9 @@ class GovernanceSettings extends Settings
             'blocking_vulnerability_severities' => ['critical', 'high'],
             'require_four_eyes_for_critical_releases' => (bool) config('release_governance.require_four_eyes_for_critical_releases', false),
             'allow_readiness_override' => true,
+            'require_sbom' => false,
+            'sbom_max_age_days' => 30,
+            'block_active_exploits' => true,
         ];
     }
 }

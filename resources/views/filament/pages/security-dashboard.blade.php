@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="grid gap-4 md:grid-cols-4">
+    <div class="grid gap-4 md:grid-cols-4 xl:grid-cols-6">
         <div class="rounded-lg border border-gray-200 bg-white p-4">
             <p class="text-sm text-gray-600">{{ __('vulnerabilities.dashboard.open_critical_high') }}</p>
             <p class="mt-2 text-2xl font-semibold text-gray-950">{{ number_format($openCriticalOrHigh) }}</p>
@@ -15,6 +15,14 @@
         <div class="rounded-lg border border-gray-200 bg-white p-4">
             <p class="text-sm text-gray-600">{{ __('vulnerabilities.dashboard.affected_software') }}</p>
             <p class="mt-2 text-2xl font-semibold text-gray-950">{{ number_format($affectedSoftwareCount) }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-sm text-gray-600">{{ __('vulnerabilities.dashboard.open_component_findings') }}</p>
+            <p class="mt-2 text-2xl font-semibold text-gray-950">{{ number_format($openComponentFindings) }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-white p-4">
+            <p class="text-sm text-gray-600">{{ __('vulnerabilities.dashboard.kev_findings') }}</p>
+            <p class="mt-2 text-2xl font-semibold text-gray-950">{{ number_format($kevCount) }}</p>
         </div>
     </div>
 
@@ -75,4 +83,42 @@
             </div>
         </section>
     </div>
+
+    @if ($priorityComponentFindings->isNotEmpty())
+        <section class="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <div class="border-b border-gray-200 px-4 py-3">
+                <h2 class="text-base font-semibold text-gray-950">{{ __('vulnerabilities.dashboard.priority_component_findings') }}</h2>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">{{ __('vulnerabilities.fields.cve') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">{{ __('vulnerabilities.fields.software') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">{{ __('vulnerabilities.fields.severity') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">{{ __('vulnerabilities.fields.cvss') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">{{ __('vulnerabilities.dashboard.risk') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-700">{{ __('vulnerabilities.fields.exploitability') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @foreach ($priorityComponentFindings as $finding)
+                            <tr>
+                                <td class="px-4 py-3 font-medium text-gray-950">{{ $finding->external_id }}</td>
+                                <td class="px-4 py-3 text-gray-700">
+                                    {{ $finding->document?->version?->software?->name ?? 'n/a' }}
+                                    <span class="text-gray-500">{{ $finding->component?->name }} {{ $finding->component?->version }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-gray-700">{{ $finding->severity?->label() ?? 'n/a' }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $finding->cvss_score ?? 'n/a' }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $finding->risk_score ?? 'n/a' }}</td>
+                                <td class="px-4 py-3 text-gray-700">{{ $finding->exploitability?->label() ?? 'n/a' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    @endif
 </x-filament-panels::page>

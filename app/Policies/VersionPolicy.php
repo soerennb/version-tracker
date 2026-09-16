@@ -51,6 +51,29 @@ class VersionPolicy
             && $version->approval_status === ApprovalStatus::APPROVED;
     }
 
+    public function viewSboms(User $user, Version $version): bool
+    {
+        return $user->can('view_sboms') && $user->can('view_versions');
+    }
+
+    public function uploadSbom(User $user, Version $version): bool
+    {
+        return $user->can('upload_sboms')
+            && $version->status?->isDraft()
+            && ($user->can('edit_versions') || $version->software?->created_by === $user->id);
+    }
+
+    public function viewReadiness(User $user, Version $version): bool
+    {
+        return $user->can('view_readiness') && $user->can('view_versions');
+    }
+
+    public function manageExceptions(User $user, Version $version): bool
+    {
+        return $user->can('manage_exceptions')
+            && $version->status?->isDraft();
+    }
+
     public function reject(User $user, Version $version): bool
     {
         return $user->can('edit_versions')

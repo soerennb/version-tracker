@@ -7,6 +7,9 @@ use App\Enums\VersionStatus;
 use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
 use App\Filament\Pages\SecurityDashboard;
+use App\Models\ComponentFinding;
+use App\Models\SbomComponent;
+use App\Models\SbomDocument;
 use App\Models\Software;
 use App\Models\User;
 use App\Models\Version;
@@ -67,6 +70,28 @@ class SecurityDashboardTest extends TestCase
         $this->assertSame(1, $viewData['affectedSoftwareCount']);
         $this->assertSame('CVE-2026-1001', $viewData['priorityFindings']->first()->cve_id);
         $this->assertSame(1, $viewData['severityBreakdown'][VulnerabilitySeverity::CRITICAL->value]);
+    }
+
+    public function test_security_dashboard_surfaces_sbom_risk_and_kev_findings(): void
+    {
+        $software = Software::factory()->create();
+        $version = Version::factory()->for($software)->create([
+            'status' => VersionStatus::PUBLISHED,
+        ]);
+        $document = SbomDocument::factory()->for($version)->create();
+        $component = SbomComponent::factory()->for($document, 'document')->create();
+        ComponentFinding::factory()->create([
+            'sbom_document_id' => $document->id,
+            'sbom_component_id' => $component->id,
+            'is_kev' => true,
+            'risk_score' => 92.5,
+        ]);
+
+        $viewData = $this->dashboardViewData();
+
+        $this->assertSame(1, $viewData['openComponentFindings']);
+        $this->assertSame(1, $viewData['kevCount']);
+        $this->assertSame($component->id, $viewData['priorityComponentFindings']->first()->component->id);
     }
 
     /**

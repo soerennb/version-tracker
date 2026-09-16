@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PublicTimelineRequest;
 use App\Models\Software;
 use App\Models\Version;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 
 class TimelineController extends Controller
@@ -42,6 +43,14 @@ class TimelineController extends Controller
             })
             ->when($filters['date_from'] ?? null, fn ($query, string $date) => $query->whereDate('release_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, string $date) => $query->whereDate('release_date', '<=', $date))
+            ->when($filters['updated_since'] ?? null, function ($query, string $date): void {
+                $updatedSince = CarbonImmutable::parse($date);
+
+                $query->where(function ($query) use ($updatedSince): void {
+                    $query->where('versions.updated_at', '>', $updatedSince)
+                        ->orWhereHas('textContents', fn ($query) => $query->where('updated_at', '>', $updatedSince));
+                });
+            })
             ->when($filters['support'] ?? null, fn ($query, string $support) => $query->where('support_status', $support))
             ->when(($filters['security'] ?? null) === 'attention', fn ($query) => $query->whereHas('vulnerabilities', fn ($query) => $query->where('status', 'open')))
             ->when(($filters['security'] ?? null) === 'clear', fn ($query) => $query->whereDoesntHave('vulnerabilities', fn ($query) => $query->where('status', 'open')))

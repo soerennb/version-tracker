@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Version;
 use App\Services\ExportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -46,6 +47,18 @@ class ExportController extends Controller
         $path = $this->exportService->exportAuditLogsToCsv($request->get('from'), $request->get('to'));
 
         return response()->download($path, basename($path));
+    }
+
+    public function compliance(Version $version): BinaryFileResponse
+    {
+        Gate::authorize('export_compliance');
+        Gate::authorize('viewReadiness', $version);
+
+        $path = $this->exportService->exportCompliancePackage($version);
+
+        return response()->download($path, basename($path), [
+            'Content-Type' => 'application/json',
+        ]);
     }
 
     /**

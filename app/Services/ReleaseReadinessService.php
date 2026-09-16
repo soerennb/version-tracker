@@ -2,17 +2,22 @@
 
 namespace App\Services;
 
+use App\Enums\ExploitabilityStatus;
 use App\Enums\Language;
 use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
 use App\Helpers\DependencyHelper;
+use App\Models\ComponentFinding;
+use App\Models\ReleaseException;
+use App\Models\SbomDocument;
 use App\Models\SoftwareDependency;
 use App\Models\Version;
+use Illuminate\Support\Collection;
 
 class ReleaseReadinessService
 {
     /**
-     * @return array{score:int, passed:int, total:int, is_ready:bool, blockers:array<int, array{code:string,label:string}>}
+     * @return array{score:int,passed:int,total:int,is_ready:bool,blockers:array<int,array{code:string,label:string}>,risks:array<string,mixed>,exceptions:array<int,array<string,mixed>>,sbom:array<string,mixed>}
      */
     public function evaluate(Version $version): array
     {
@@ -23,15 +28,20 @@ class ReleaseReadinessService
             'software.dependenciesOutgoing.maxVersion',
             'textContents',
             'vulnerabilities',
+            'sbomDocuments.findings',
+            'releaseExceptions.owner',
         ]);
 
         $governance = app(RuntimeSettings::class)->governance();
+        $security = $this->securityCheck($version);
+        $sbom = $this->sbomCheck($version);
         $checks = [
             $this->contentCheck($version),
-            ...($governance->require_security_clearance ? [$this->securityCheck($version)] : []),
+            ...($governance->require_security_clearance ? [$security] : []),
             ...($governance->require_dependency_validation ? [$this->dependencyCheck($version)] : []),
             ...($governance->require_attachments ? [$this->attachmentsCheck($version)] : []),
             ...($governance->require_lifecycle ? [$this->lifecycleCheck($version)] : []),
+            ...($governance->require_sbom ? [$sbom] : []),
         ];
 
         $blockers = array_values(array_filter($checks, fn (array $check): bool => ! $check['passed']));
@@ -47,6 +57,19 @@ class ReleaseReadinessService
                 'code' => $check['code'],
                 'label' => $check['label'],
             ], $blockers),
+            'risks' => $security['risks'] ?? [],
+            'exceptions' => $this->activeExceptions($version)
+                ->map(fn (ReleaseException $exception): array => [
+                    'id' => $exception->id,
+                    'check_code' => $exception->check_code,
+                    'reason' => $exception->reason,
+                    'expires_at' => $exception->expires_at?->toISOString(),
+                    'owner_id' => $exception->owner_id,
+                    'owner_name' => $exception->owner?->name,
+                ])
+                ->values()
+                ->all(),
+            'sbom' => $sbom['details'] ?? [],
         ];
     }
 
@@ -74,16 +97,116 @@ class ReleaseReadinessService
      */
     protected function securityCheck(Version $version): array
     {
-        $hasBlockingVulnerabilities = $version->vulnerabilities
-            ->contains(fn ($vulnerability): bool => $vulnerability->status === VulnerabilityStatus::OPEN
-                && $vulnerability->severity instanceof VulnerabilitySeverity
-                && app(RuntimeSettings::class)->isBlockingSeverity($vulnerability->severity));
+        $settings = app(RuntimeSettings::class);
+        $blockingVulnerabilities = $version->vulnerabilities
+            ->filter(fn ($vulnerability): bool => $vulnerability->status === VulnerabilityStatus::OPEN
+                && ($settings->isBlockingSeverity($vulnerability->severity)
+                    || ($settings->governance()->block_active_exploits
+                        && $vulnerability->exploitability === ExploitabilityStatus::ACTIVE)))
+            ->map(fn ($vulnerability): array => [
+                'type' => 'vulnerability',
+                'id' => $vulnerability->id,
+                'external_id' => $vulnerability->cve_id ?: $vulnerability->external_id,
+                'severity' => $vulnerability->severity?->value,
+                'exploitability' => $vulnerability->exploitability?->value,
+            ])
+            ->values()
+            ->all();
+        $latestSbom = $this->latestSbomDocument($version);
+        $blockingFindings = ($latestSbom?->findings ?? collect())
+            ->filter(fn (ComponentFinding $finding): bool => $finding->status === VulnerabilityStatus::OPEN
+                && ($finding->is_kev
+                    || $settings->isBlockingSeverity($finding->severity)
+                    || ($settings->governance()->block_active_exploits
+                        && $finding->exploitability === ExploitabilityStatus::ACTIVE)))
+            ->map(fn (ComponentFinding $finding): array => [
+                'type' => 'component_finding',
+                'id' => $finding->id,
+                'external_id' => $finding->external_id,
+                'severity' => $finding->severity?->value,
+                'exploitability' => $finding->exploitability?->value,
+                'component_id' => $finding->sbom_component_id,
+            ])
+            ->values()
+            ->all();
+        $risks = collect($blockingVulnerabilities)->merge($blockingFindings)->values();
+        $hasException = $this->hasActiveException($version, 'blocking_vulnerabilities');
 
         return [
-            'passed' => ! $hasBlockingVulnerabilities,
+            'passed' => $risks->isEmpty() || $hasException,
             'code' => 'blocking_vulnerabilities',
-            'label' => __('versions.readiness.blocking_vulnerabilities'),
+            'label' => $blockingFindings !== []
+                ? __('versions.readiness.blocking_component_findings')
+                : __('versions.readiness.blocking_vulnerabilities'),
+            'risks' => [
+                'total' => $risks->count(),
+                'critical' => $risks->where('severity', VulnerabilitySeverity::CRITICAL->value)->count(),
+                'high' => $risks->where('severity', VulnerabilitySeverity::HIGH->value)->count(),
+                'active' => $risks->where('exploitability', ExploitabilityStatus::ACTIVE->value)->count(),
+                'items' => $risks->take(100)->all(),
+                'exception_applied' => $hasException,
+            ],
         ];
+    }
+
+    /**
+     * @return array{passed:bool,code:string,label:string,details:array<string,mixed>}
+     */
+    protected function sbomCheck(Version $version): array
+    {
+        $latest = $this->latestSbomDocument($version);
+        $maxAge = max((int) app(RuntimeSettings::class)->governance()->sbom_max_age_days, 1);
+        $parsedAt = $latest?->parsed_at ?? $latest?->created_at;
+        $ageDays = $parsedAt ? (int) $parsedAt->diffInDays(now()) : null;
+        $fresh = $latest !== null && ($ageDays === null || $ageDays <= $maxAge);
+        $exceptionCode = $latest === null ? 'missing_sbom' : 'stale_sbom';
+        $hasException = $this->hasActiveException($version, $exceptionCode);
+
+        return [
+            'passed' => $fresh || $hasException,
+            'code' => $exceptionCode,
+            'label' => $latest === null
+                ? __('versions.readiness.missing_sbom')
+                : __('versions.readiness.stale_sbom'),
+            'details' => [
+                'document_id' => $latest?->id,
+                'format' => $latest?->format,
+                'parsed_at' => $parsedAt?->toISOString(),
+                'age_days' => $ageDays,
+                'max_age_days' => $maxAge,
+                'component_count' => $latest?->component_count ?? 0,
+                'finding_count' => $latest?->finding_count ?? 0,
+                'exception_applied' => $hasException,
+            ],
+        ];
+    }
+
+    /**
+     * @return Collection<int, ReleaseException>
+     */
+    protected function activeExceptions(Version $version): Collection
+    {
+        return $version->releaseExceptions
+            ->filter(fn (ReleaseException $exception): bool => $exception->isActive())
+            ->sortBy('expires_at')
+            ->values();
+    }
+
+    protected function hasActiveException(Version $version, string $checkCode): bool
+    {
+        return $this->activeExceptions($version)->contains(fn (ReleaseException $exception): bool => $exception->check_code === $checkCode);
+    }
+
+    protected function latestSbomDocument(Version $version): ?SbomDocument
+    {
+        return $version->sbomDocuments
+            ->where('status', 'processed')
+            ->sortByDesc(function (SbomDocument $document): string {
+                $timestamp = $document->parsed_at?->getTimestamp() ?? $document->created_at?->getTimestamp() ?? 0;
+
+                return sprintf('%020d%020d', $timestamp, $document->id);
+            })
+            ->first();
     }
 
     /**

@@ -28,6 +28,7 @@ use App\Mcp\Tools\ShowFileAttachmentTool;
 use App\Mcp\Tools\ShowSoftwareDependencyTool;
 use App\Mcp\Tools\ShowSoftwareTool;
 use App\Mcp\Tools\ShowTextContentTool;
+use App\Mcp\Tools\ShowVersionReadinessTool;
 use App\Mcp\Tools\ShowVersionTool;
 use App\Mcp\Tools\ShowVulnerabilityTool;
 use App\Mcp\Tools\UpdateFileAttachmentTool;
@@ -36,6 +37,7 @@ use App\Mcp\Tools\UpdateSoftwareTool;
 use App\Mcp\Tools\UpdateTextContentTool;
 use App\Mcp\Tools\UpdateVersionTool;
 use App\Mcp\Tools\UpdateVulnerabilityTool;
+use App\Mcp\Tools\UploadSbomTool;
 use Laravel\Mcp\Server;
 
 class VersionTrackerServer extends Server
@@ -81,5 +83,7 @@ class VersionTrackerServer extends Server
         PublishVersionTool::class,
         PrepareAttachmentUploadTool::class,
         CompleteAttachmentUploadTool::class,
+        UploadSbomTool::class,
+        ShowVersionReadinessTool::class,
     ];
 }

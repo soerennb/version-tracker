@@ -43,6 +43,7 @@ class ApiTokenManagementTest extends TestCase
             }
         }
         $this->assertContains('view_dependencies', $service->preset($admin, 'read'));
+        $this->assertContains('manage_feeds', $service->availableAbilities($admin));
     }
 
     public function test_mcp_only_token_cannot_use_rest_and_scoped_admin_cannot_delete(): void

@@ -7,6 +7,7 @@ use App\Enums\VulnerabilitySeverity;
 use App\Settings\GovernanceSettings;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -61,6 +62,16 @@ class ManageGovernanceSettings extends SettingsPage
                             ->label(__('filament.settings.fields.require_lifecycle')),
                         Toggle::make('require_dependency_validation')
                             ->label(__('filament.settings.fields.require_dependency_validation')),
+                        Toggle::make('require_sbom')
+                            ->label(__('filament.settings.fields.require_sbom')),
+                        TextInput::make('sbom_max_age_days')
+                            ->label(__('filament.settings.fields.sbom_max_age_days'))
+                            ->numeric()
+                            ->required()
+                            ->minValue(1)
+                            ->maxValue(3650),
+                        Toggle::make('block_active_exploits')
+                            ->label(__('filament.settings.fields.block_active_exploits')),
                     ]),
                 Section::make(__('filament.settings.governance.approval'))
                     ->description(__('filament.settings.governance.approval_description'))

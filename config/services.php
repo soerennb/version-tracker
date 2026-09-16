@@ -42,4 +42,18 @@ return [
         'max_pages' => (int) env('GITHUB_SYNC_MAX_PAGES', 10),
     ],
 
+    'osv' => [
+        'url' => env('OSV_API_URL', 'https://api.osv.dev/v1/querybatch'),
+        'timeout' => (int) env('OSV_HTTP_TIMEOUT', 10),
+        'retry_times' => (int) env('OSV_HTTP_RETRY_TIMES', 2),
+    ],
+
+    'risk_intelligence' => [
+        'enabled' => (bool) env('RISK_INTELLIGENCE_ENABLED', false),
+        'epss_url' => env('EPSS_API_URL', 'https://api.first.org/data/v1/epss'),
+        'kev_url' => env('CISA_KEV_URL', 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),
+        'timeout' => (int) env('RISK_INTELLIGENCE_HTTP_TIMEOUT', 15),
+        'retry_times' => (int) env('RISK_INTELLIGENCE_HTTP_RETRY_TIMES', 2),
+    ],
+
 ];

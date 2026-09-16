@@ -9,6 +9,7 @@ use App\Models\Software;
 use App\Models\TextContent;
 use App\Models\Version;
 use App\Models\Vulnerability;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -89,5 +90,26 @@ class PublicTimelineFilterTest extends TestCase
             ->assertJsonPath('meta.total', 13)
             ->assertJsonPath('meta.has_more', true)
             ->assertJsonCount(5, 'data');
+    }
+
+    public function test_timeline_supports_incremental_polling_by_update_timestamp(): void
+    {
+        $software = Software::factory()->create();
+        $old = Version::factory()->for($software)->create([
+            'status' => VersionStatus::PUBLISHED,
+            'updated_at' => CarbonImmutable::parse('2026-01-01 00:00:00'),
+        ]);
+        $new = Version::factory()->for($software)->create([
+            'status' => VersionStatus::PUBLISHED,
+            'updated_at' => CarbonImmutable::parse('2026-02-01 00:00:00'),
+        ]);
+
+        $this->getJson('/api/public/timeline?updated_since=2026-01-15T00:00:00Z')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $new->id)
+            ->assertJsonPath('filters.active.updated_since', '2026-01-15T00:00:00Z');
+
+        $this->assertNotSame($old->id, $new->id);
     }
 }

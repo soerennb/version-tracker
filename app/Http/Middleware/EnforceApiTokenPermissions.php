@@ -44,8 +44,15 @@ class EnforceApiTokenPermissions
                 }
             } else {
                 $ability = match ($controller) {
-                    'AuditLogController' => 'view_audit_logs','ExportController' => 'export_data','ImpactAnalysisController' => match ($action) {
+                    'AuditLogController' => 'view_audit_logs','ExportController' => $action === 'compliance' ? 'export_compliance' : 'export_data','ImpactAnalysisController' => match ($action) {
                         'software' => 'view_software','version' => 'view_versions',default => 'view_vulnerabilities'
+                    },'SbomController' => match ($action) {
+                        'index', 'show' => 'view_sboms',
+                        'exceptions', 'readiness' => 'view_readiness',
+                        'store' => 'upload_sboms',
+                        'enrich' => 'manage_feeds',
+                        'storeException', 'destroyException' => 'manage_exceptions',
+                        default => null,
                     },'AuthController' => in_array($action, ['me', 'logout', 'resendVerification'], true) ? '' : null,default => null
                 };
             }
