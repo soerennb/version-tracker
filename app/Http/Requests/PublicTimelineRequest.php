@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Language;
 use App\Enums\SupportStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -31,6 +32,9 @@ class PublicTimelineRequest extends FormRequest
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
             'support' => ['nullable', Rule::enum(SupportStatus::class)],
             'security' => ['nullable', Rule::in(['clear', 'attention'])],
+            'locale' => ['nullable', Rule::in(Language::values())],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:60'],
         ];
     }
 }

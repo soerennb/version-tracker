@@ -3,7 +3,15 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\AnalyticsDashboard;
+use App\Filament\Pages\ManageAccessSettings;
+use App\Filament\Pages\ManageGeneralSettings;
+use App\Filament\Pages\ManageGitHubSettings;
+use App\Filament\Pages\ManageGovernanceSettings;
+use App\Filament\Pages\ManageNotificationSettings;
+use App\Filament\Pages\ManageOperationsSettings;
+use App\Filament\Pages\ManageSecuritySettings;
 use App\Filament\Pages\VersionApproval;
+use App\Services\RuntimeSettings;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -27,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->brandName(config('app.name'))
+            ->brandName(fn (): string => app(RuntimeSettings::class)->general()->application_name)
             ->login()
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->homeUrl(fn (): string => AnalyticsDashboard::getUrl())
@@ -39,6 +47,13 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 VersionApproval::class,
                 AnalyticsDashboard::class,
+                ManageGeneralSettings::class,
+                ManageAccessSettings::class,
+                ManageNotificationSettings::class,
+                ManageGovernanceSettings::class,
+                ManageGitHubSettings::class,
+                ManageSecuritySettings::class,
+                ManageOperationsSettings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

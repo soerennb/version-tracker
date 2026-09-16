@@ -3,11 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Enums\VersionStatus;
-use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
 use App\Models\User;
 use App\Models\Version;
 use App\Models\Vulnerability;
+use App\Services\RuntimeSettings;
 use BackedEnum;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
@@ -45,7 +45,7 @@ class SecurityDashboard extends Page
     {
         $openCriticalOrHigh = Vulnerability::query()
             ->where('vulnerabilities.status', VulnerabilityStatus::OPEN->value)
-            ->whereIn('vulnerabilities.severity', [VulnerabilitySeverity::CRITICAL->value, VulnerabilitySeverity::HIGH->value]);
+            ->whereIn('vulnerabilities.severity', app(RuntimeSettings::class)->governance()->blocking_vulnerability_severities);
 
         $priorityFindings = (clone $openCriticalOrHigh)
             ->with(['affectedVersion.software', 'fixedVersion'])
@@ -60,7 +60,7 @@ class SecurityDashboard extends Page
             'eolRiskCount' => Version::query()
                 ->where('status', VersionStatus::PUBLISHED->value)
                 ->whereNotNull('eol_date')
-                ->whereDate('eol_date', '<=', now()->addDays(90))
+                ->whereDate('eol_date', '<=', now()->addDays(app(RuntimeSettings::class)->notifications()->eol_alert_horizon_days))
                 ->count(),
             'affectedSoftwareCount' => (clone $openCriticalOrHigh)
                 ->whereHas('affectedVersion.software')

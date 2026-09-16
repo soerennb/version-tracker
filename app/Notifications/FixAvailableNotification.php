@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Vulnerability;
+use App\Notifications\Concerns\HasNotificationDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class FixAvailableNotification extends Notification implements ShouldQueue
 {
+    use HasNotificationDelivery;
     use Queueable;
 
     public function __construct(public Vulnerability $vulnerability)
@@ -24,7 +26,7 @@ class FixAvailableNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return $this->deliveryChannels;
     }
 
     /**
@@ -53,10 +55,28 @@ class FixAvailableNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
+        $version = $this->vulnerability->affectedVersion;
+
         return [
+            'type' => 'fix_available',
+            'title' => __('notifications.fix_available.subject', ['cve' => $this->vulnerability->cve_id]),
+            'message' => __('notifications.fix_available.body', [
+                'cve' => $this->vulnerability->cve_id,
+                'software' => $version?->software?->name ?? 'n/a',
+                'version' => $this->vulnerability->fixedVersion?->version_number ?? 'n/a',
+            ]),
+            'action_url' => url('/security/'.$this->vulnerability->id),
             'vulnerability_id' => $this->vulnerability->id,
             'cve_id' => $this->vulnerability->cve_id,
             'fixed_version_id' => $this->vulnerability->fixed_version_id,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return $this->toArray($notifiable);
     }
 }

@@ -7,8 +7,11 @@ use App\Http\Requests\StoreSoftwareDependencyRequest;
 use App\Http\Requests\UpdateSoftwareDependencyRequest;
 use App\Http\Resources\SoftwareDependencyResource;
 use App\Models\SoftwareDependency;
+use App\Services\ContentOperations;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class SoftwareDependencyController extends Controller
 {
@@ -27,7 +30,13 @@ class SoftwareDependencyController extends Controller
     {
         Gate::authorize('manage_dependencies');
 
-        $dependency = SoftwareDependency::create($request->validated());
+        try {
+            $dependency = app(ContentOperations::class)->create(SoftwareDependency::class, $request->validated());
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'scope_key' => __('validation.custom.software_dependency.duplicate'),
+            ]);
+        }
 
         return SoftwareDependencyResource::make($dependency->load(['software', 'dependsOnSoftware']))
             ->response()
@@ -46,7 +55,13 @@ class SoftwareDependencyController extends Controller
     {
         Gate::authorize('manage_dependencies');
 
-        $softwareDependency->update($request->validated());
+        try {
+            app(ContentOperations::class)->update($softwareDependency, $request->validated());
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'scope_key' => __('validation.custom.software_dependency.duplicate'),
+            ]);
+        }
 
         return SoftwareDependencyResource::make($softwareDependency->load(['software', 'dependsOnSoftware']))
             ->response();
@@ -56,7 +71,7 @@ class SoftwareDependencyController extends Controller
     {
         Gate::authorize('manage_dependencies');
 
-        $softwareDependency->delete();
+        app(ContentOperations::class)->delete($softwareDependency);
 
         return response()->json(status: 204);
     }

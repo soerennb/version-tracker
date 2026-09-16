@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'github' => [
+        'token' => env('GITHUB_TOKEN'),
+        'sync_enabled' => (bool) env('GITHUB_SYNC_ENABLED', false),
+        'timeout' => (int) env('GITHUB_HTTP_TIMEOUT', 10),
+        'max_pages' => (int) env('GITHUB_SYNC_MAX_PAGES', 10),
+    ],
+
 ];

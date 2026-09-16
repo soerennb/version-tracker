@@ -17,7 +17,7 @@ class RejectVersionRequest extends FormRequest
     {
         $version = $this->route('version');
 
-        return $version instanceof Version && $this->user()?->can('update', $version);
+        return $version instanceof Version && ($this->user()?->can('reject', $version) ?? false);
     }
 
     /**

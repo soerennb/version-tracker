@@ -18,6 +18,8 @@ class AuditLog extends Model
      */
     protected $fillable = [
         'user_id',
+        'interface',
+        'api_token_id',
         'action',
         'model_type',
         'model_id',

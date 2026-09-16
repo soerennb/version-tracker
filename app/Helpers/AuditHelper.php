@@ -5,6 +5,7 @@ namespace App\Helpers;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuditHelper
 {
@@ -21,6 +22,8 @@ class AuditHelper
             'model_id' => $modelId,
             'old_values' => $oldValues,
             'new_values' => $newValues,
+            'interface' => request()->is('mcp/*') ? 'mcp' : (request()->is('api/*') ? 'rest' : 'web'),
+            'api_token_id' => $user?->currentAccessToken() instanceof PersonalAccessToken ? $user->currentAccessToken()->id : null,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
         ]);

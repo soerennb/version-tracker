@@ -21,7 +21,7 @@ class GitHubReleaseImportTest extends TestCase
     {
         Http::preventStrayRequests();
         Http::fake([
-            'api.github.com/repos/acme/core/releases' => Http::response([
+            '*api.github.com/repos/acme/core/releases*' => Http::response([
                 [
                     'tag_name' => 'v1.2.0',
                     'name' => 'Release 1.2.0',
@@ -30,7 +30,7 @@ class GitHubReleaseImportTest extends TestCase
                     'html_url' => 'https://github.com/acme/core/releases/tag/v1.2.0',
                 ],
             ]),
-            'api.github.com/repos/acme/core/tags' => Http::response([
+            '*api.github.com/repos/acme/core/tags*' => Http::response([
                 ['name' => 'v1.2.0'],
                 ['name' => 'v1.1.0'],
             ]),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Helpers\PublicLocale;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PublicTimelineRequest;
 use App\Models\Software;
@@ -22,7 +23,7 @@ class TimelineController extends Controller
 
         $activeSoftwareId = $softwareFilters->contains('id', $requestedSoftwareId) ? $requestedSoftwareId : null;
 
-        $entries = Version::query()
+        $paginator = Version::query()
             ->with([
                 'software',
                 'textContents' => fn ($query) => $query->latest(),
@@ -45,16 +46,19 @@ class TimelineController extends Controller
             ->when(($filters['security'] ?? null) === 'attention', fn ($query) => $query->whereHas('vulnerabilities', fn ($query) => $query->where('status', 'open')))
             ->when(($filters['security'] ?? null) === 'clear', fn ($query) => $query->whereDoesntHave('vulnerabilities', fn ($query) => $query->where('status', 'open')))
             ->latest('release_date')
-            ->limit(60)
-            ->get()
+            ->paginate($request->integer('per_page', 12), page: $request->integer('page', 1));
+
+        $entries = $paginator->getCollection()
             ->map(fn (Version $version) => [
                 'id' => $version->id,
                 'software_id' => $version->software_id,
                 'software' => $version->software?->name,
                 'version' => $version->version_number,
                 'release_date' => $version->release_date?->toDateString(),
-                'headline' => $version->textContents->first()?->title,
-                'summary' => str($version->textContents->first()?->content)->limit(200)->toString(),
+                'headline' => PublicLocale::content($version->textContents, $request)?->title,
+                'summary' => str(PublicLocale::content($version->textContents, $request)?->content)->limit(200)->toString(),
+                'content_locale' => ($content = PublicLocale::content($version->textContents, $request)) ? PublicLocale::languageValue($content) : null,
+                'fallback_used' => PublicLocale::fallbackUsed($version->textContents, $request),
                 'support_status' => $version->support_status?->value,
                 'open_vulnerabilities' => $version->open_vulnerabilities_count,
             ]);
@@ -67,6 +71,13 @@ class TimelineController extends Controller
                     ...$filters,
                     'software' => $activeSoftwareId,
                 ],
+            ],
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'has_more' => $paginator->hasMorePages(),
             ],
         ]);
     }

@@ -22,4 +22,14 @@ return [
         'subject' => 'Fix für :cve verfügbar',
         'body' => 'Für :cve in :software ist eine behobene Version (:version) verfügbar.',
     ],
+    'version_published' => [
+        'subject' => 'Version :version veröffentlicht',
+        'body' => 'Die Version :version von :software ist jetzt öffentlich verfügbar.',
+    ],
+    'invitation' => [
+        'subject' => 'Einladung zu VersionTracker',
+        'body' => 'Du wurdest eingeladen, ein Konto in :app anzulegen.',
+        'action' => 'Einladung annehmen',
+        'expiry' => 'Der Link ist bis :date gültig.',
+    ],
 ];

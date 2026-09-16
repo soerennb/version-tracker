@@ -2,12 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\RuntimeSettings;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
 {
+    public function __construct(private readonly RuntimeSettings $runtimeSettings) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
@@ -19,7 +22,7 @@ class SecurityHeaders
             'camera=(), geolocation=(), microphone=(), payment=(), usb=()'
         );
 
-        if ($request->isSecure() || config('security.force_hsts', false)) {
+        if ($request->isSecure() || $this->runtimeSettings->security()->force_hsts) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 

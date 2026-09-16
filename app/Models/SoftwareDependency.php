@@ -12,6 +12,24 @@ class SoftwareDependency extends Model
     /** @use HasFactory<SoftwareDependencyFactory> */
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::saving(function (SoftwareDependency $dependency): void {
+            if ($dependency->software_id === null
+                || $dependency->depends_on_software_id === null
+                || $dependency->dependency_type === null) {
+                return;
+            }
+
+            $dependency->scope_key = self::makeScopeKey(
+                (int) $dependency->software_id,
+                (int) $dependency->depends_on_software_id,
+                $dependency->applies_to_version_id === null ? null : (int) $dependency->applies_to_version_id,
+                (string) $dependency->dependency_type,
+            );
+        });
+    }
+
     /**
      * @var array<int, string>
      */
@@ -23,6 +41,20 @@ class SoftwareDependency extends Model
         'max_version_id',
         'dependency_type',
     ];
+
+    public static function makeScopeKey(
+        int $softwareId,
+        int $dependsOnSoftwareId,
+        ?int $appliesToVersionId,
+        string $dependencyType,
+    ): string {
+        return hash('sha256', (string) json_encode([
+            'software_id' => $softwareId,
+            'depends_on_software_id' => $dependsOnSoftwareId,
+            'applies_to_version_id' => $appliesToVersionId,
+            'dependency_type' => strtolower(trim($dependencyType)),
+        ], JSON_THROW_ON_ERROR));
+    }
 
     public function software(): BelongsTo
     {

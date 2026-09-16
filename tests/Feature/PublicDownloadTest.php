@@ -39,8 +39,15 @@ class PublicDownloadTest extends TestCase
 
         $published = Version::factory()->create(['status' => VersionStatus::PUBLISHED]);
 
+        $privateAttachment = FileAttachment::factory()->for($published)->create([
+            'file_path' => 'attachments/private.zip',
+            'is_public' => false,
+        ]);
+        Storage::disk('local')->put($privateAttachment->file_path, 'private');
+
         $this->get(route('public.download', [$draft, $draftAttachment]))->assertNotFound();
         $this->get(route('public.download', [$published, $draftAttachment]))->assertNotFound();
+        $this->get(route('public.download', [$published, $privateAttachment]))->assertNotFound();
     }
 
     public function test_missing_and_unsafe_paths_are_not_downloaded(): void

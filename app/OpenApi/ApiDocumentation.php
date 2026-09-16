@@ -36,9 +36,28 @@ use OpenApi\Attributes as OA;
         new OA\Parameter(name: 'date_to', in: 'query', required: false, schema: new OA\Schema(type: 'string', format: 'date')),
         new OA\Parameter(name: 'support', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['supported', 'maintenance', 'deprecated', 'eol'])),
         new OA\Parameter(name: 'security', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['clear', 'attention'])),
+        new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 60)),
     ],
     responses: [
         new OA\Response(response: 200, description: 'Published release timeline.'),
+        new OA\Response(response: 422, description: 'Invalid filters.'),
+    ]
+)]
+#[OA\Get(
+    path: '/public/security',
+    summary: 'List public security advisories',
+    tags: ['Public'],
+    parameters: [
+        new OA\Parameter(name: 'q', in: 'query', required: false, schema: new OA\Schema(type: 'string', maxLength: 100)),
+        new OA\Parameter(name: 'software', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+        new OA\Parameter(name: 'severity', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['critical', 'high', 'medium', 'low'])),
+        new OA\Parameter(name: 'status', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['open', 'fixed', 'accepted'])),
+        new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 50)),
+    ],
+    responses: [
+        new OA\Response(response: 200, description: 'Published security advisories with pagination and summary counts.'),
         new OA\Response(response: 422, description: 'Invalid filters.'),
     ]
 )]

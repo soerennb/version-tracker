@@ -25,12 +25,13 @@ class ReleaseReadinessService
             'vulnerabilities',
         ]);
 
+        $governance = app(RuntimeSettings::class)->governance();
         $checks = [
             $this->contentCheck($version),
-            $this->securityCheck($version),
-            $this->dependencyCheck($version),
-            $this->attachmentsCheck($version),
-            $this->lifecycleCheck($version),
+            ...($governance->require_security_clearance ? [$this->securityCheck($version)] : []),
+            ...($governance->require_dependency_validation ? [$this->dependencyCheck($version)] : []),
+            ...($governance->require_attachments ? [$this->attachmentsCheck($version)] : []),
+            ...($governance->require_lifecycle ? [$this->lifecycleCheck($version)] : []),
         ];
 
         $blockers = array_values(array_filter($checks, fn (array $check): bool => ! $check['passed']));
@@ -59,8 +60,10 @@ class ReleaseReadinessService
             ->map(fn (Language|string $language): string => $language instanceof Language ? $language->value : $language)
             ->all();
 
+        $requiredLanguages = app(RuntimeSettings::class)->governance()->required_content_languages;
+
         return [
-            'passed' => empty(array_diff(Language::values(), $languages)),
+            'passed' => empty(array_diff($requiredLanguages, $languages)),
             'code' => 'missing_required_content',
             'label' => __('versions.readiness.missing_required_content'),
         ];
@@ -73,10 +76,8 @@ class ReleaseReadinessService
     {
         $hasBlockingVulnerabilities = $version->vulnerabilities
             ->contains(fn ($vulnerability): bool => $vulnerability->status === VulnerabilityStatus::OPEN
-                && in_array($vulnerability->severity, [
-                    VulnerabilitySeverity::CRITICAL,
-                    VulnerabilitySeverity::HIGH,
-                ], true));
+                && $vulnerability->severity instanceof VulnerabilitySeverity
+                && app(RuntimeSettings::class)->isBlockingSeverity($vulnerability->severity));
 
         return [
             'passed' => ! $hasBlockingVulnerabilities,

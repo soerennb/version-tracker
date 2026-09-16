@@ -31,8 +31,19 @@ class UpdateVersionRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var Version $version */
+        $version = $this->route('version');
+
         return [
-            'version_number' => ['required', 'string', 'max:50', 'regex:'.VersionHelper::semverRegex()],
+            'version_number' => [
+                'required',
+                'string',
+                'max:50',
+                'regex:'.VersionHelper::semverRegex(),
+                Rule::unique('versions', 'version_number')
+                    ->ignore($version)
+                    ->where(fn ($query) => $query->where('software_id', $version->software_id)),
+            ],
             'release_date' => ['required', 'date'],
             'eol_date' => ['nullable', 'date', 'after_or_equal:release_date'],
             'lts_date' => ['nullable', 'date', 'after_or_equal:release_date'],

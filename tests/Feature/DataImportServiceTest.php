@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Software;
+use App\Models\SoftwareDependency;
 use App\Models\Version;
 use App\Models\Vulnerability;
 use App\Services\DataImportService;
@@ -68,5 +69,30 @@ class DataImportServiceTest extends TestCase
         $this->assertNotEmpty($result['errors']);
         $this->assertDatabaseMissing('software', ['name' => 'New App']);
         $this->assertSame(0, Vulnerability::query()->count());
+    }
+
+    public function test_import_keeps_dependency_types_as_separate_relationships(): void
+    {
+        Software::factory()->create(['name' => 'Application']);
+        Software::factory()->create(['name' => 'Runtime']);
+
+        $result = app(DataImportService::class)->importPayload([
+            'dependencies' => [
+                [
+                    'software_name' => 'Application',
+                    'depends_on_software_name' => 'Runtime',
+                    'dependency_type' => 'runtime',
+                ],
+                [
+                    'software_name' => 'Application',
+                    'depends_on_software_name' => 'Runtime',
+                    'dependency_type' => 'build',
+                ],
+            ],
+        ]);
+
+        $this->assertSame(2, $result['created']);
+        $this->assertSame(2, SoftwareDependency::query()->count());
+        $this->assertSame(['build', 'runtime'], SoftwareDependency::query()->orderBy('dependency_type')->pluck('dependency_type')->all());
     }
 }

@@ -86,4 +86,9 @@ class Version extends Model
     {
         return $this->hasMany(VersionReview::class);
     }
+
+    public function sources(): HasMany
+    {
+        return $this->hasMany(VersionSource::class);
+    }
 }

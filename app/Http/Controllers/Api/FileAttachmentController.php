@@ -8,9 +8,8 @@ use App\Http\Requests\UpdateFileAttachmentRequest;
 use App\Http\Resources\FileAttachmentResource;
 use App\Models\FileAttachment;
 use App\Models\Version;
+use App\Services\FileAttachmentService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class FileAttachmentController extends Controller
 {
@@ -27,78 +26,40 @@ class FileAttachmentController extends Controller
     {
         $this->authorize('create', FileAttachment::class);
 
-        $disk = config('filesystems.default', 'public');
-        $uploadedFile = $request->file('file');
-        $path = $uploadedFile->store("attachments/{$version->id}", $disk);
-
-        $attachment = $version->fileAttachments()->create([
-            'filename' => $this->sanitizeFilename($uploadedFile->getClientOriginalName()),
-            'file_path' => $path,
-            'mime_type' => $uploadedFile->getClientMimeType(),
-            'size' => $uploadedFile->getSize(),
-        ]);
+        $attachment = app(FileAttachmentService::class)->store($version, $request->file('file'), $request->safe()->except('file'));
 
         return FileAttachmentResource::make($attachment)
             ->response()
             ->setStatusCode(201);
     }
 
-    public function show(Version $version, FileAttachment $fileAttachment): JsonResponse
+    public function show(FileAttachment $fileAttachment): JsonResponse
     {
         $this->authorize('view', $fileAttachment);
-        $this->ensureRelationship($version, $fileAttachment);
 
         return FileAttachmentResource::make($fileAttachment)->response();
     }
 
-    public function update(UpdateFileAttachmentRequest $request, Version $version, FileAttachment $fileAttachment): JsonResponse
+    public function update(UpdateFileAttachmentRequest $request, FileAttachment $fileAttachment): JsonResponse
     {
         $this->authorize('update', $fileAttachment);
-        $this->ensureRelationship($version, $fileAttachment);
 
+        $service = app(FileAttachmentService::class);
         if ($request->hasFile('file')) {
-            $disk = config('filesystems.default', 'public');
-            Storage::disk($disk)->delete($fileAttachment->file_path);
-
-            $uploadedFile = $request->file('file');
-            $path = $uploadedFile->store("attachments/{$version->id}", $disk);
-
-            $fileAttachment->update([
-                'filename' => $this->sanitizeFilename($uploadedFile->getClientOriginalName()),
-                'file_path' => $path,
-                'mime_type' => $uploadedFile->getClientMimeType(),
-                'size' => $uploadedFile->getSize(),
-            ]);
+            $service->store($fileAttachment->version, $request->file('file'), $request->safe()->except('file'), $fileAttachment);
+        } else {
+            $service->update($fileAttachment, $request->safe()->except('file'));
         }
 
         return FileAttachmentResource::make($fileAttachment)->response();
     }
 
-    public function destroy(Version $version, FileAttachment $fileAttachment): JsonResponse
+    public function destroy(FileAttachment $fileAttachment): JsonResponse
     {
         $this->authorize('delete', $fileAttachment);
-        $this->ensureRelationship($version, $fileAttachment);
 
-        $disk = config('filesystems.default', 'public');
-        Storage::disk($disk)->delete($fileAttachment->file_path);
-        $fileAttachment->delete();
+        app(FileAttachmentService::class)->delete($fileAttachment);
 
         return response()->json(status: 204);
-    }
-
-    protected function ensureRelationship(Version $version, FileAttachment $attachment): void
-    {
-        abort_if($attachment->version_id !== $version->id, 404);
-    }
-
-    protected function sanitizeFilename(string $originalName): string
-    {
-        $basename = pathinfo($originalName, PATHINFO_FILENAME);
-        $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
-
-        $safeBase = preg_replace('/[^A-Za-z0-9._ -]/', '-', $basename) ?: 'file';
-        $safeBase = trim((string) Str::of($safeBase)->squish()->limit(100, ''));
-
-        return $extension !== '' ? $safeBase.'.'.$extension : $safeBase;
     }
 }

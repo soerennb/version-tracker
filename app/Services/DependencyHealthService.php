@@ -60,10 +60,8 @@ class DependencyHealthService
         return $dependency->dependsOnSoftware?->versions
             ->flatMap(fn (Version $version) => $version->vulnerabilities)
             ->contains(fn ($vulnerability): bool => $vulnerability->status === VulnerabilityStatus::OPEN
-                && in_array($vulnerability->severity, [
-                    VulnerabilitySeverity::CRITICAL,
-                    VulnerabilitySeverity::HIGH,
-                ], true)) ?? false;
+                && $vulnerability->severity instanceof VulnerabilitySeverity
+                && app(RuntimeSettings::class)->isBlockingSeverity($vulnerability->severity)) ?? false;
     }
 
     protected function hasEolRisk(SoftwareDependency $dependency): bool
@@ -71,7 +69,7 @@ class DependencyHealthService
         return $dependency->dependsOnSoftware?->versions
             ->contains(fn (Version $version): bool => $version->status === VersionStatus::PUBLISHED
                 && $version->eol_date !== null
-                && $version->eol_date->lte(now()->addDays(90))) ?? false;
+                && $version->eol_date->lte(now()->addDays(app(RuntimeSettings::class)->notifications()->eol_alert_horizon_days))) ?? false;
     }
 
     protected function isOutdated(SoftwareDependency $dependency): bool

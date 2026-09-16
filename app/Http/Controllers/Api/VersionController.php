@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApproveVersionRequest;
 use App\Http\Requests\RejectVersionRequest;
 use App\Http\Requests\StoreVersionRequest;
 use App\Http\Requests\UpdateVersionRequest;
@@ -48,7 +49,7 @@ class VersionController extends Controller
 
     public function show(Version $version): JsonResponse
     {
-        $version->load(['software', 'textContents', 'fileAttachments', 'vulnerabilities']);
+        $version->load(['software', 'textContents', 'fileAttachments', 'vulnerabilities', 'sources']);
 
         return VersionResource::make($version)->response();
     }
@@ -67,17 +68,28 @@ class VersionController extends Controller
         return response()->json(status: 204);
     }
 
-    public function approve(Version $version): JsonResponse
+    public function approve(ApproveVersionRequest $request, Version $version): JsonResponse
     {
-        $this->authorize('approve', $version);
-
-        $approved = $this->versionService->approve($version);
+        $approved = $this->versionService->approve(
+            $version,
+            $request->boolean('override'),
+            $request->string('override_reason')->toString() ?: null,
+        );
 
         return VersionResource::make($approved)->response();
     }
 
+    public function publish(Version $version): JsonResponse
+    {
+        $this->authorize('publish', $version);
+
+        return VersionResource::make($this->versionService->publish($version))->response();
+    }
+
     public function reject(RejectVersionRequest $request, Version $version): JsonResponse
     {
+        $this->authorize('reject', $version);
+
         $data = $request->validated();
 
         $rejected = $this->versionService->reject($version, $data['reason'], $data['reject_reason']);

@@ -18,9 +18,17 @@ class FileAttachment extends Model
     protected $fillable = [
         'version_id',
         'filename',
+        'artifact_type',
+        'platform',
+        'architecture',
         'file_path',
         'mime_type',
         'size',
+        'checksum',
+        'checksum_algorithm',
+        'signature',
+        'verification_status',
+        'is_public',
     ];
 
     /**
@@ -30,6 +38,7 @@ class FileAttachment extends Model
     {
         return [
             'size' => 'integer',
+            'is_public' => 'boolean',
         ];
     }
 

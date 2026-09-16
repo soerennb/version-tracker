@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\ApprovalStatus;
 use App\Enums\Language;
 use App\Enums\VersionStatus;
-use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
 use App\Models\SoftwareDependency;
 use App\Models\Version;
@@ -38,14 +37,14 @@ class AdminWorkQueueService
             'security_blockers' => Vulnerability::query()
                 ->with('affectedVersion.software:id,name')
                 ->where('status', VulnerabilityStatus::OPEN)
-                ->whereIn('severity', [VulnerabilitySeverity::CRITICAL, VulnerabilitySeverity::HIGH])
+                ->whereIn('severity', app(RuntimeSettings::class)->governance()->blocking_vulnerability_severities)
                 ->orderByDesc('cvss_score')
                 ->limit($limit)
                 ->get(),
             'eol_soon' => Version::query()
                 ->with('software:id,name')
                 ->where('status', VersionStatus::PUBLISHED)
-                ->whereBetween('eol_date', [today(), today()->addDays(90)])
+                ->whereBetween('eol_date', [today(), today()->addDays(app(RuntimeSettings::class)->notifications()->eol_alert_horizon_days)])
                 ->orderBy('eol_date')
                 ->limit($limit)
                 ->get(),
@@ -69,7 +68,9 @@ class AdminWorkQueueService
                 $languages = $version->textContents->pluck('language')
                     ->map(fn (Language|string $language): string => $language instanceof Language ? $language->value : $language);
 
-                return $languages->intersect(Language::values())->count() < count(Language::values());
+                $requiredLanguages = app(RuntimeSettings::class)->governance()->required_content_languages;
+
+                return $languages->intersect($requiredLanguages)->count() < count($requiredLanguages);
             })
             ->take($limit)
             ->values();

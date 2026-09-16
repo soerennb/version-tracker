@@ -4,8 +4,9 @@ namespace App\Filament\Resources\Software\Tables;
 
 use App\Enums\ComplianceStatus;
 use App\Enums\SoftwareStatus;
+use App\Enums\SourceSyncStatus;
 use App\Models\Software;
-use App\Services\GitHubReleaseImportService;
+use App\Services\GitHubReleaseSyncDispatcher;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -17,7 +18,6 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use Throwable;
 
 class SoftwareTable
 {
@@ -65,6 +65,16 @@ class SoftwareTable
                     ->label(__('filament.software.fields.last_release_date'))
                     ->date('d.m.Y')
                     ->sortable(),
+                TextColumn::make('latestSourceSyncRun.status')
+                    ->label(__('filament.software.fields.source_sync_status'))
+                    ->badge()
+                    ->formatStateUsing(fn (?SourceSyncStatus $state): ?string => $state?->label())
+                    ->color(fn (?SourceSyncStatus $state): string => $state?->color() ?? 'gray'),
+                TextColumn::make('latestSourceSyncRun.created_at')
+                    ->label(__('filament.software.fields.source_sync_last_run'))
+                    ->dateTime('d.m.Y H:i')
+                    ->since()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('creator.name')
                     ->label(__('filament.fields.created_by'))
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -91,24 +101,21 @@ class SoftwareTable
                     ->requiresConfirmation()
                     ->visible(fn (Software $record): bool => filled($record->github_repo_url))
                     ->action(function (Software $record): void {
-                        try {
-                            $result = app(GitHubReleaseImportService::class)->importFromGitHub($record);
-                        } catch (Throwable $exception) {
+                        $syncRun = app(GitHubReleaseSyncDispatcher::class)->dispatch($record);
+
+                        if (! $syncRun) {
                             Notification::make()
-                                ->title(__('filament.messages.github_import_failed'))
-                                ->body($exception->getMessage())
-                                ->danger()
+                                ->title(__('filament.messages.github_sync_already_active'))
+                                ->warning()
                                 ->send();
 
                             return;
                         }
 
                         Notification::make()
-                            ->title(__('filament.messages.github_import_finished'))
-                            ->body(__('filament.messages.github_import_summary', [
-                                'created' => $result['created'],
-                                'skipped' => $result['skipped'],
-                                'errors' => count($result['errors']),
+                            ->title(__('filament.messages.github_sync_queued'))
+                            ->body(__('filament.messages.github_sync_queued_description', [
+                                'id' => $syncRun->id,
                             ]))
                             ->success()
                             ->send();

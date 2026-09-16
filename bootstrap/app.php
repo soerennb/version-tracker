@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Middleware\ApplyRuntimeSettings;
+use App\Http\Middleware\PublicFeature;
 use App\Http\Middleware\SecurityHeaders;
+use App\Services\RuntimeScheduleService;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,10 +17,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('app:lifecycle-alerts')
-            ->dailyAt('08:00')
+        $schedule->command('app:sync-github-releases')
+            ->everyMinute()
             ->withoutOverlapping(1440)
-            ->onOneServer();
+            ->onOneServer()
+            ->when(fn (): bool => app(RuntimeScheduleService::class)->shouldRunGithubSync());
+
+        $schedule->command('app:lifecycle-alerts')
+            ->everyMinute()
+            ->withoutOverlapping(1440)
+            ->onOneServer()
+            ->when(fn (): bool => app(RuntimeScheduleService::class)->shouldRunLifecycleAlerts());
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $trustedHosts = array_values(array_filter(array_map(
@@ -43,6 +53,11 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->trustProxies(at: $trustedProxies);
         }
 
+        $middleware->statefulApi();
+        $middleware->alias([
+            'public.feature' => PublicFeature::class,
+        ]);
+        $middleware->prepend(ApplyRuntimeSettings::class);
         $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -13,8 +13,10 @@ class LifecycleService
     /**
      * @return Builder<Version>
      */
-    public function upcomingEolQuery(int $days = 90): Builder
+    public function upcomingEolQuery(?int $days = null): Builder
     {
+        $days ??= app(RuntimeSettings::class)->notifications()->eol_alert_horizon_days;
+
         return Version::query()
             ->with('software')
             ->where('status', VersionStatus::PUBLISHED->value)
@@ -26,7 +28,7 @@ class LifecycleService
     /**
      * @return Collection<int, Version>
      */
-    public function upcomingEol(int $days = 90): Collection
+    public function upcomingEol(?int $days = null): Collection
     {
         return $this->upcomingEolQuery($days)
             ->orderBy('eol_date')
@@ -36,7 +38,7 @@ class LifecycleService
     /**
      * @return array<string, int>
      */
-    public function dashboardStats(int $days = 90): array
+    public function dashboardStats(?int $days = null): array
     {
         return [
             'upcoming_eol' => $this->upcomingEolQuery($days)->count(),

@@ -90,12 +90,17 @@ class DataImportService
             foreach ($payload['dependencies'] ?? [] as $row) {
                 $software = Software::query()->where('name', $row['software_name'])->firstOrFail();
                 $dependsOnSoftware = Software::query()->where('name', $row['depends_on_software_name'])->firstOrFail();
+                $appliesToVersionId = $this->versionId($software, $row['applies_to_version'] ?? null);
+                $dependencyType = $row['dependency_type'] ?? 'runtime';
                 $dependency = SoftwareDependency::query()->firstOrNew([
                     'software_id' => $software->id,
                     'depends_on_software_id' => $dependsOnSoftware->id,
+                    'applies_to_version_id' => $appliesToVersionId,
+                    'dependency_type' => $dependencyType,
                 ]);
                 $dependency->fill([
-                    'dependency_type' => $row['dependency_type'] ?? 'runtime',
+                    'dependency_type' => $dependencyType,
+                    'applies_to_version_id' => $appliesToVersionId,
                     'min_version_id' => $this->versionId($dependsOnSoftware, $row['min_version'] ?? null),
                     'max_version_id' => $this->versionId($dependsOnSoftware, $row['max_version'] ?? null),
                 ]);

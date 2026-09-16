@@ -39,6 +39,7 @@ class VersionResource extends JsonResource
             'text_contents' => TextContentResource::collection($this->whenLoaded('textContents')),
             'file_attachments' => FileAttachmentResource::collection($this->whenLoaded('fileAttachments')),
             'vulnerabilities' => VulnerabilityResource::collection($this->whenLoaded('vulnerabilities')),
+            'sources' => VersionSourceResource::collection($this->whenLoaded('sources')),
         ];
     }
 }

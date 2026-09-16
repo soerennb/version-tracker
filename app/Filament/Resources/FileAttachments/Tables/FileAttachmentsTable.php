@@ -18,6 +18,15 @@ class FileAttachmentsTable
                     ->searchable(),
                 TextColumn::make('filename')
                     ->searchable(),
+                TextColumn::make('artifact_type')
+                    ->label(__('filament.files.fields.artifact_type'))
+                    ->badge(),
+                TextColumn::make('platform')
+                    ->label(__('filament.files.fields.platform'))
+                    ->toggleable(),
+                TextColumn::make('architecture')
+                    ->label(__('filament.files.fields.architecture'))
+                    ->toggleable(),
                 TextColumn::make('file_path')
                     ->searchable(),
                 TextColumn::make('mime_type')
@@ -25,6 +34,12 @@ class FileAttachmentsTable
                 TextColumn::make('size')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('verification_status')
+                    ->label(__('filament.files.fields.verification_status'))
+                    ->badge(),
+                TextColumn::make('is_public')
+                    ->label(__('filament.files.fields.is_public'))
+                    ->boolean(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

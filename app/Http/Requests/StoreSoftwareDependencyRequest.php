@@ -2,13 +2,29 @@
 
 namespace App\Http\Requests;
 
+use App\Models\SoftwareDependency;
 use App\Rules\AcyclicSoftwareDependency;
 use App\Rules\VersionBelongsToSoftware;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSoftwareDependencyRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'scope_key' => SoftwareDependency::makeScopeKey(
+                $this->integer('software_id'),
+                $this->integer('depends_on_software_id'),
+                $this->exists('applies_to_version_id') && $this->input('applies_to_version_id') !== null
+                    ? $this->integer('applies_to_version_id')
+                    : null,
+                (string) $this->input('dependency_type', 'runtime'),
+            ),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->can('manage_dependencies') ?? false;
@@ -29,6 +45,12 @@ class StoreSoftwareDependencyRequest extends FormRequest
             'min_version_id' => ['nullable', 'integer', 'exists:versions,id', new VersionBelongsToSoftware($dependsOnSoftwareId)],
             'max_version_id' => ['nullable', 'integer', 'exists:versions,id', new VersionBelongsToSoftware($dependsOnSoftwareId)],
             'dependency_type' => ['required', 'string', 'max:255'],
+            'scope_key' => [
+                'required',
+                'string',
+                'size:64',
+                Rule::unique('software_dependencies', 'scope_key'),
+            ],
         ];
     }
 }

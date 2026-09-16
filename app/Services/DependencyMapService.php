@@ -132,10 +132,8 @@ class DependencyMapService
         return $software->versions
             ->flatMap(fn ($version) => $version->vulnerabilities)
             ->contains(fn ($vulnerability): bool => $vulnerability->status === VulnerabilityStatus::OPEN
-                && in_array($vulnerability->severity, [
-                    VulnerabilitySeverity::CRITICAL,
-                    VulnerabilitySeverity::HIGH,
-                ], true));
+                && $vulnerability->severity instanceof VulnerabilitySeverity
+                && app(RuntimeSettings::class)->isBlockingSeverity($vulnerability->severity));
     }
 
     protected function hasEolRisk(Software $software): bool
@@ -143,6 +141,6 @@ class DependencyMapService
         return $software->versions
             ->contains(fn ($version): bool => $version->status === VersionStatus::PUBLISHED
                 && $version->eol_date !== null
-                && $version->eol_date->lte(now()->addDays(90)));
+                && $version->eol_date->lte(now()->addDays(app(RuntimeSettings::class)->notifications()->eol_alert_horizon_days)));
     }
 }

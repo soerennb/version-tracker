@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\ApprovalStatus;
 use App\Enums\RejectReason;
+use App\Enums\VersionStatus;
 use App\Models\Version;
 use App\Services\ApprovalCockpitService;
 use App\Services\ReleaseReadinessService;
@@ -18,6 +19,9 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class VersionApproval extends Page implements HasTable
 {
@@ -39,7 +43,8 @@ class VersionApproval extends Page implements HasTable
     public function mount(): void
     {
         $this->selectedVersionId = Version::query()
-            ->where('approval_status', ApprovalStatus::PENDING->value)
+            ->where('status', VersionStatus::DRAFT->value)
+            ->whereIn('approval_status', [ApprovalStatus::PENDING->value, ApprovalStatus::APPROVED->value])
             ->oldest('created_at')
             ->value('id');
     }
@@ -61,7 +66,8 @@ class VersionApproval extends Page implements HasTable
                         'textContents',
                         'vulnerabilities',
                     ])
-                    ->where('approval_status', ApprovalStatus::PENDING->value)
+                    ->where('status', VersionStatus::DRAFT->value)
+                    ->whereIn('approval_status', [ApprovalStatus::PENDING->value, ApprovalStatus::APPROVED->value])
             )
             ->columns([
                 TextColumn::make('software.name')
@@ -97,7 +103,31 @@ class VersionApproval extends Page implements HasTable
                     ->label(__('filament.actions.approve'))
                     ->color('success')
                     ->requiresConfirmation()
+                    ->visible(fn (Version $record): bool => $record->approval_status === ApprovalStatus::PENDING)
+                    ->disabled(fn (Version $record): bool => ! app(ReleaseReadinessService::class)->evaluate($record)['is_ready'])
                     ->action(fn (Version $record) => $this->approveVersion($record)),
+                Action::make('approve_override')
+                    ->label(__('filament.actions.approve_override'))
+                    ->color('warning')
+                    ->icon(Heroicon::OutlinedExclamationTriangle)
+                    ->visible(fn (Version $record): bool => $record->approval_status === ApprovalStatus::PENDING
+                        && ! app(ReleaseReadinessService::class)->evaluate($record)['is_ready']
+                        && (auth()->user()?->can('override_release_readiness') ?? false))
+                    ->form([
+                        Forms\Components\Textarea::make('override_reason')
+                            ->label(__('filament.actions.reason'))
+                            ->required()
+                            ->minLength(10)
+                            ->rows(4),
+                    ])
+                    ->action(fn (Version $record, array $data) => $this->approveWithOverride($record, $data['override_reason'] ?? null)),
+                Action::make('publish')
+                    ->label(__('filament.actions.publish'))
+                    ->color('primary')
+                    ->icon(Heroicon::OutlinedRocketLaunch)
+                    ->visible(fn (Version $record): bool => $record->approval_status === ApprovalStatus::APPROVED)
+                    ->requiresConfirmation()
+                    ->action(fn (Version $record) => $this->publishVersion($record)),
                 Action::make('reject')
                     ->label(__('filament.actions.reject'))
                     ->color('danger')
@@ -140,7 +170,14 @@ class VersionApproval extends Page implements HasTable
 
     protected function approveVersion(Version $version): void
     {
-        app(VersionService::class)->approve($version);
+        try {
+            Gate::authorize('approve', $version);
+            app(VersionService::class)->approve($version);
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyActionFailure($exception);
+
+            return;
+        }
 
         if ($this->selectedVersionId === $version->id) {
             $this->selectedVersionId = null;
@@ -148,6 +185,46 @@ class VersionApproval extends Page implements HasTable
 
         Notification::make()
             ->title(__('filament.messages.version_approved'))
+            ->body($version->software?->name.' '.$version->version_number)
+            ->success()
+            ->send();
+    }
+
+    protected function approveWithOverride(Version $version, ?string $overrideReason): void
+    {
+        try {
+            Gate::authorize('approve', $version);
+            app(VersionService::class)->approve($version, true, $overrideReason);
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyActionFailure($exception);
+
+            return;
+        }
+
+        Notification::make()
+            ->title(__('filament.messages.version_approved_override'))
+            ->body($version->software?->name.' '.$version->version_number)
+            ->success()
+            ->send();
+    }
+
+    protected function publishVersion(Version $version): void
+    {
+        try {
+            Gate::authorize('publish', $version);
+            app(VersionService::class)->publish($version);
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyActionFailure($exception);
+
+            return;
+        }
+
+        if ($this->selectedVersionId === $version->id) {
+            $this->selectedVersionId = null;
+        }
+
+        Notification::make()
+            ->title(__('filament.messages.version_published'))
             ->body($version->software?->name.' '.$version->version_number)
             ->success()
             ->send();
@@ -175,7 +252,21 @@ class VersionApproval extends Page implements HasTable
         }
 
         return Version::query()
-            ->where('approval_status', ApprovalStatus::PENDING->value)
+            ->where('status', VersionStatus::DRAFT->value)
+            ->whereIn('approval_status', [ApprovalStatus::PENDING->value, ApprovalStatus::APPROVED->value])
             ->find($this->selectedVersionId);
+    }
+
+    protected function notifyActionFailure(AuthorizationException|ValidationException $exception): void
+    {
+        $body = $exception instanceof ValidationException
+            ? collect($exception->errors())->flatten()->implode(' ')
+            : $exception->getMessage();
+
+        Notification::make()
+            ->title(__('filament.messages.action_failed'))
+            ->body($body)
+            ->danger()
+            ->send();
     }
 }

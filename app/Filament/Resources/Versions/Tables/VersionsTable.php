@@ -5,11 +5,11 @@ namespace App\Filament\Resources\Versions\Tables;
 use App\Enums\ApprovalStatus;
 use App\Enums\SupportStatus;
 use App\Enums\VersionStatus;
-use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
 use App\Filament\Resources\Versions\Pages\CreateVersion;
 use App\Models\Version;
 use App\Services\ReleaseReadinessService;
+use App\Services\RuntimeSettings;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -25,6 +25,9 @@ class VersionsTable
     {
         $statusOptions = collect(VersionStatus::cases())->mapWithKeys(fn (VersionStatus $case) => [$case->value => $case->label()])->all();
         $approvalOptions = collect(ApprovalStatus::cases())->mapWithKeys(fn (ApprovalStatus $case) => [$case->value => $case->label()])->all();
+        $runtimeSettings = app(RuntimeSettings::class);
+        $blockingSeverities = $runtimeSettings->governance()->blocking_vulnerability_severities;
+        $eolHorizonDays = $runtimeSettings->notifications()->eol_alert_horizon_days;
 
         return $table
             ->defaultSort('release_date', 'desc')
@@ -32,7 +35,7 @@ class VersionsTable
                 ->with(['fileAttachments', 'textContents', 'vulnerabilities', 'software.dependenciesOutgoing.dependsOnSoftware', 'software.dependenciesOutgoing.minVersion', 'software.dependenciesOutgoing.maxVersion'])
                 ->withCount(['vulnerabilities as security_blockers_count' => fn ($query) => $query
                     ->where('status', VulnerabilityStatus::OPEN)
-                    ->whereIn('severity', [VulnerabilitySeverity::CRITICAL, VulnerabilitySeverity::HIGH])]))
+                    ->whereIn('severity', $blockingSeverities)]))
             ->columns([
                 TextColumn::make('software.name')
                     ->label(__('filament.versions.fields.software'))
@@ -84,7 +87,7 @@ class VersionsTable
                     ->label(__('filament.versions.fields.eol_date'))
                     ->date('d.m.Y')
                     ->sortable()
-                    ->color(fn (Version $record): string => $record->eol_date && $record->eol_date->lte(now()->addDays(90)) ? 'warning' : 'gray')
+                    ->color(fn (Version $record): string => $record->eol_date && $record->eol_date->lte(now()->addDays($eolHorizonDays)) ? 'warning' : 'gray')
                     ->toggleable(),
                 TextColumn::make('updated_at')
                     ->dateTime('d.m.Y H:i')
@@ -104,7 +107,7 @@ class VersionsTable
                         ->where('status', VersionStatus::PUBLISHED->value)
                         ->whereNotNull('eol_date')
                         ->whereDate('eol_date', '>=', now()->toDateString())
-                        ->whereDate('eol_date', '<=', now()->addDays(90)->toDateString())),
+                        ->whereDate('eol_date', '<=', now()->addDays($eolHorizonDays)->toDateString())),
             ])
             ->recordActions([
                 EditAction::make(),

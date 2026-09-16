@@ -25,7 +25,7 @@ class VersionGovernanceService
 
     public function requiresIndependentApproval(Version $version): bool
     {
-        return (bool) config('release_governance.require_four_eyes_for_critical_releases')
+        return app(RuntimeSettings::class)->governance()->require_four_eyes_for_critical_releases
             && $this->isCriticalRelease($version);
     }
 
@@ -55,9 +55,7 @@ class VersionGovernanceService
     {
         return $version->vulnerabilities
             ->contains(fn ($vulnerability): bool => $vulnerability->status === VulnerabilityStatus::OPEN
-                && in_array($vulnerability->severity, [
-                    VulnerabilitySeverity::CRITICAL,
-                    VulnerabilitySeverity::HIGH,
-                ], true));
+                && $vulnerability->severity instanceof VulnerabilitySeverity
+                && app(RuntimeSettings::class)->isBlockingSeverity($vulnerability->severity));
     }
 }

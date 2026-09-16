@@ -15,6 +15,7 @@ return [
         'delete_versions',
         'approve_versions',
         'publish_versions',
+        'override_release_readiness',
         'view_content',
         'create_content',
         'edit_content',
@@ -29,6 +30,9 @@ return [
         'create_vulnerabilities',
         'edit_vulnerabilities',
         'delete_vulnerabilities',
+        'manage_users',
+        'manage_settings',
+        'manage_advanced_settings',
     ],
     'role_abilities' => [
         UserRole::ADMIN->value => [
@@ -43,7 +47,6 @@ return [
             'create_versions',
             'edit_versions',
             'approve_versions',
-            'publish_versions',
             'view_content',
             'create_content',
             'edit_content',

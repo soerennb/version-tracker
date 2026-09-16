@@ -24,6 +24,7 @@ return [
         'actions' => [
             'comment' => 'Kommentar',
             'approved' => 'Freigegeben',
+            'published' => 'Veröffentlicht',
             'rejected' => 'Abgelehnt',
         ],
         'reject_reasons' => [
@@ -37,5 +38,12 @@ return [
     ],
     'governance' => [
         'four_eyes_required' => 'Kritische Releases müssen von einer anderen Person freigegeben werden.',
+        'approve_requires_pending' => 'Nur ausstehende Entwürfe können freigegeben werden.',
+        'reject_requires_pending' => 'Nur ausstehende Entwürfe können abgelehnt werden.',
+        'not_ready' => 'Dieses Release ist noch nicht freigabebereit.',
+        'override_not_allowed' => 'Für diesen Readiness-Override fehlt die Berechtigung.',
+        'override_reason_required' => 'Für einen Readiness-Override ist eine Begründung erforderlich.',
+        'publish_requires_approval' => 'Ein Release muss vor der Veröffentlichung freigegeben werden.',
+        'approval_invalidated' => 'Die Änderung setzt die Freigabe zurück und erfordert eine erneute Prüfung.',
     ],
 ];

@@ -6,6 +6,7 @@ use App\Enums\SubscriptionEvent;
 use App\Enums\UserRole;
 use App\Enums\VulnerabilitySeverity;
 use App\Models\EolAlertDelivery;
+use App\Models\NotificationDelivery;
 use App\Models\User;
 use App\Models\Version;
 use App\Models\Vulnerability;
@@ -13,39 +14,91 @@ use App\Notifications\FixAvailableNotification;
 use App\Notifications\LifecycleAlertNotification;
 use App\Notifications\SecurityAlertNotification;
 use App\Notifications\VersionApprovedNotification;
+use App\Notifications\VersionPublishedNotification;
+use Illuminate\Notifications\Notification as NotificationInstance;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
+use Throwable;
 
 class NotificationService
 {
-    /**
-     * @var array<int, int>
-     */
-    private const EOL_ALERT_WINDOWS = [7, 30, 90];
-
     public function notifyVersionApproved(Version $version): void
     {
-        Notification::send($this->releaseRecipients($version, SubscriptionEvent::RELEASE), new VersionApprovedNotification($version));
+        $policy = $this->notificationPolicy('release_approved');
+
+        if (! $policy['enabled']) {
+            return;
+        }
+
+        $this->dispatchActionable(
+            $this->releaseRecipients($version, SubscriptionEvent::RELEASE),
+            new VersionApprovedNotification($version),
+            'version-approved:'.$version->id,
+            $policy['channels'],
+        );
+    }
+
+    public function notifyVersionPublished(Version $version): void
+    {
+        $policy = $this->notificationPolicy('release_published');
+
+        if (! $policy['enabled']) {
+            return;
+        }
+
+        $this->dispatchActionable(
+            $this->releaseRecipients($version, SubscriptionEvent::RELEASE),
+            new VersionPublishedNotification($version),
+            'version-published:'.$version->id,
+            $policy['channels'],
+        );
     }
 
     public function notifySecurityAlert(Vulnerability $vulnerability): void
     {
-        if (! $vulnerability->severity instanceof VulnerabilitySeverity || ! $vulnerability->severity->shouldNotify()) {
+        $securityPolicy = $this->notificationPolicy('security_alert');
+        $fixPolicy = $this->notificationPolicy('fix_available');
+
+        if (! $securityPolicy['enabled'] && ! $fixPolicy['enabled']) {
+            return;
+        }
+
+        if (! $vulnerability->severity instanceof VulnerabilitySeverity
+            || ! in_array($vulnerability->severity->value, app(RuntimeSettings::class)->governance()->blocking_vulnerability_severities, true)) {
             return;
         }
 
         $recipients = $this->releaseRecipients($vulnerability->affectedVersion, SubscriptionEvent::SECURITY);
 
-        Notification::send($recipients, new SecurityAlertNotification($vulnerability));
+        if ($securityPolicy['enabled']) {
+            $this->dispatchActionable(
+                $recipients,
+                new SecurityAlertNotification($vulnerability),
+                'security-alert:vulnerability:'.$vulnerability->id,
+                $securityPolicy['channels'],
+            );
+        }
 
-        if ($vulnerability->fixed_version_id !== null) {
-            Notification::send($recipients, new FixAvailableNotification($vulnerability));
+        if ($vulnerability->fixed_version_id !== null && $fixPolicy['enabled']) {
+            $this->dispatchActionable(
+                $recipients,
+                new FixAvailableNotification($vulnerability),
+                'fix-available:vulnerability:'.$vulnerability->id,
+                $fixPolicy['channels'],
+            );
         }
     }
 
-    public function notifyUpcomingEol(int $days = 90): int
+    public function notifyUpcomingEol(?int $days = null): int
     {
+        $policy = $this->notificationPolicy('lifecycle_alert');
+
+        if (! $policy['enabled']) {
+            return 0;
+        }
+
+        $days ??= app(RuntimeSettings::class)->notifications()->eol_alert_horizon_days;
+
         return app(LifecycleService::class)->upcomingEol($days)
             ->reduce(function (int $dispatchedAlerts, Version $version): int {
                 $windowDays = $this->eolAlertWindow($version);
@@ -66,7 +119,16 @@ class NotificationService
 
         $daysUntilEol = (int) today()->diffInDays($version->eol_date, false);
 
-        foreach (self::EOL_ALERT_WINDOWS as $windowDays) {
+        $alertWindows = array_map('intval', app(RuntimeSettings::class)->notifications()->eol_alert_windows);
+        sort($alertWindows, SORT_NUMERIC);
+
+        foreach ($alertWindows as $windowDays) {
+            $windowDays = (int) $windowDays;
+
+            if ($windowDays <= 0) {
+                continue;
+            }
+
             if ($daysUntilEol <= $windowDays) {
                 return $windowDays;
             }
@@ -94,7 +156,12 @@ class NotificationService
                 return false;
             }
 
-            Notification::send($this->releaseRecipients($version, SubscriptionEvent::EOL), new LifecycleAlertNotification($version));
+            $this->dispatchActionable(
+                $this->releaseRecipients($version, SubscriptionEvent::EOL),
+                new LifecycleAlertNotification($version),
+                'eol:version:'.$version->id.':'.$windowDays.':'.$version->eol_date->toDateString(),
+                $this->notificationPolicy('lifecycle_alert')['channels'],
+            );
 
             EolAlertDelivery::query()
                 ->where($deliveryKey)
@@ -154,5 +221,87 @@ class NotificationService
                 ->where('software_id', $version->software_id)
                 ->whereIn('event', [SubscriptionEvent::ALL->value, $event->value]))
             ->get();
+    }
+
+    private function dispatchActionable(
+        Collection $recipients,
+        NotificationInstance $notification,
+        string $eventKey,
+        array $channels,
+    ): void {
+        if ($channels === []) {
+            return;
+        }
+
+        foreach ($recipients as $recipient) {
+            if (! $recipient instanceof User) {
+                continue;
+            }
+
+            $now = now();
+            $inserted = NotificationDelivery::query()->insertOrIgnore([
+                'user_id' => $recipient->id,
+                'event_key' => $eventKey,
+                'channel' => implode(',', $channels),
+                'status' => 'queued',
+                'attempts' => 1,
+                'queued_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            if ($inserted === 0) {
+                continue;
+            }
+
+            $queuedNotification = clone $notification;
+
+            if (method_exists($queuedNotification, 'setDeliveryEventKey')) {
+                $queuedNotification->setDeliveryEventKey($eventKey);
+            }
+
+            if (method_exists($queuedNotification, 'setDeliveryChannels')) {
+                $queuedNotification->setDeliveryChannels($channels);
+            }
+
+            try {
+                $recipient->notify($queuedNotification);
+
+                NotificationDelivery::query()
+                    ->where('user_id', $recipient->id)
+                    ->where('event_key', $eventKey)
+                    ->update([
+                        'status' => 'sent',
+                        'sent_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+            } catch (Throwable $exception) {
+                NotificationDelivery::query()
+                    ->where('user_id', $recipient->id)
+                    ->where('event_key', $eventKey)
+                    ->update([
+                        'status' => 'failed',
+                        'failed_at' => now(),
+                        'error_message' => $exception->getMessage(),
+                        'updated_at' => now(),
+                    ]);
+            }
+        }
+    }
+
+    /**
+     * @return array{enabled: bool, channels: array<int, string>}
+     */
+    private function notificationPolicy(string $event): array
+    {
+        $settings = app(RuntimeSettings::class)->notifications();
+
+        return [
+            'enabled' => (bool) ($settings->{$event.'_enabled'} ?? false),
+            'channels' => array_values(array_intersect(
+                ['mail', 'database'],
+                (array) ($settings->{$event.'_channels'} ?? []),
+            )),
+        ];
     }
 }

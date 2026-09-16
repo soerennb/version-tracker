@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Version;
+use App\Notifications\Concerns\HasNotificationDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class LifecycleAlertNotification extends Notification implements ShouldQueue
 {
+    use HasNotificationDelivery;
     use Queueable;
 
     public function __construct(public Version $version)
@@ -24,7 +26,7 @@ class LifecycleAlertNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return $this->deliveryChannels;
     }
 
     /**
@@ -55,9 +57,28 @@ class LifecycleAlertNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
+            'type' => 'lifecycle_alert',
+            'title' => __('notifications.lifecycle_alert.subject', [
+                'software' => $this->version->software?->name ?? 'n/a',
+                'version' => $this->version->version_number,
+            ]),
+            'message' => __('notifications.lifecycle_alert.body', [
+                'software' => $this->version->software?->name ?? 'n/a',
+                'version' => $this->version->version_number,
+                'date' => $this->version->eol_date?->format('Y-m-d') ?? 'n/a',
+            ]),
+            'action_url' => url('/releases/'.$this->version->id),
             'version_id' => $this->version->id,
             'software_id' => $this->version->software_id,
             'eol_date' => $this->version->eol_date?->toDateString(),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return $this->toArray($notifiable);
     }
 }

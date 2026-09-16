@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Enums\VersionStatus;
 use App\Models\Software;
 use App\Models\User;
 use App\Models\Version;
@@ -44,7 +45,9 @@ class VersionSemverValidationTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $version = Version::factory()->create();
+        $version = Version::factory()->create([
+            'status' => VersionStatus::DRAFT,
+        ]);
 
         $this->putJson('/api/versions/'.$version->id, [
             'version_number' => '2.0.0+build.10',

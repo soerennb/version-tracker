@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Version;
+use App\Notifications\Concerns\HasNotificationDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class VersionApprovedNotification extends Notification implements ShouldQueue
 {
+    use HasNotificationDelivery;
     use Queueable;
 
     public function __construct(public Version $version)
@@ -22,7 +24,7 @@ class VersionApprovedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return $this->deliveryChannels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -44,9 +46,24 @@ class VersionApprovedNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
+            'type' => 'version_approved',
+            'title' => __('notifications.version_approved.subject', ['version' => $this->version->version_number]),
+            'message' => __('notifications.version_approved.body', [
+                'software' => $this->version->software?->name ?? 'n/a',
+                'version' => $this->version->version_number,
+            ]),
+            'action_url' => url('/admin'),
             'software_id' => $this->version->software_id,
             'version_id' => $this->version->id,
             'version_number' => $this->version->version_number,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return $this->toArray($notifiable);
     }
 }

@@ -25,7 +25,8 @@ class VersionPolicy
 
     public function update(User $user, Version $version): bool
     {
-        return $user->can('edit_versions') || $version->software?->created_by === $user->id;
+        return $version->status?->isDraft()
+            && ($user->can('edit_versions') || $version->software?->created_by === $user->id);
     }
 
     public function delete(User $user, Version $version): bool
@@ -38,12 +39,23 @@ class VersionPolicy
 
     public function approve(User $user, Version $version): bool
     {
-        return $user->can('approve_versions') && $version->approval_status === ApprovalStatus::PENDING;
+        return $user->can('approve_versions')
+            && $version->status?->isDraft()
+            && $version->approval_status === ApprovalStatus::PENDING;
     }
 
     public function publish(User $user, Version $version): bool
     {
-        return $user->can('publish_versions') && $version->approval_status === ApprovalStatus::APPROVED;
+        return $user->can('publish_versions')
+            && $version->status?->isDraft()
+            && $version->approval_status === ApprovalStatus::APPROVED;
+    }
+
+    public function reject(User $user, Version $version): bool
+    {
+        return $user->can('edit_versions')
+            && $version->status?->isDraft()
+            && $version->approval_status === ApprovalStatus::PENDING;
     }
 
     public function restore(User $user, Version $version): bool

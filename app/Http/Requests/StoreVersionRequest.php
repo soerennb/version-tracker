@@ -28,7 +28,14 @@ class StoreVersionRequest extends FormRequest
     {
         return [
             'software_id' => ['required', 'exists:software,id'],
-            'version_number' => ['required', 'string', 'max:50', 'regex:'.VersionHelper::semverRegex()],
+            'version_number' => [
+                'required',
+                'string',
+                'max:50',
+                'regex:'.VersionHelper::semverRegex(),
+                Rule::unique('versions', 'version_number')
+                    ->where(fn ($query) => $query->where('software_id', $this->integer('software_id'))),
+            ],
             'release_date' => ['required', 'date'],
             'eol_date' => ['nullable', 'date', 'after_or_equal:release_date'],
             'lts_date' => ['nullable', 'date', 'after_or_equal:release_date'],

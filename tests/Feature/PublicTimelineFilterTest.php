@@ -70,4 +70,24 @@ class PublicTimelineFilterTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['security', 'date_from']);
     }
+
+    public function test_timeline_returns_pagination_metadata(): void
+    {
+        $software = Software::factory()->create();
+
+        foreach (range(1, 13) as $index) {
+            Version::factory()->for($software)->create([
+                'status' => VersionStatus::PUBLISHED,
+                'release_date' => now()->subDays($index),
+            ]);
+        }
+
+        $this->getJson('/api/public/timeline?per_page=5&page=2')
+            ->assertOk()
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.per_page', 5)
+            ->assertJsonPath('meta.total', 13)
+            ->assertJsonPath('meta.has_more', true)
+            ->assertJsonCount(5, 'data');
+    }
 }

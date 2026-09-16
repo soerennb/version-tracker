@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateTextContentRequest;
 use App\Http\Resources\TextContentResource;
 use App\Models\TextContent;
 use App\Models\Version;
+use App\Services\ContentOperations;
 use Illuminate\Http\JsonResponse;
 
 class TextContentController extends Controller
@@ -25,7 +26,7 @@ class TextContentController extends Controller
     {
         $this->authorize('create', TextContent::class);
 
-        $content = $version->textContents()->create($request->validated());
+        $content = app(ContentOperations::class)->create(TextContent::class, [...$request->validated(), 'version_id' => $version->id]);
 
         return TextContentResource::make($content)
             ->response()
@@ -43,7 +44,7 @@ class TextContentController extends Controller
     {
         $this->authorize('update', $textContent);
 
-        $textContent->update($request->validated());
+        app(ContentOperations::class)->update($textContent, $request->validated());
 
         return TextContentResource::make($textContent)->response();
     }
@@ -52,7 +53,7 @@ class TextContentController extends Controller
     {
         $this->authorize('delete', $textContent);
 
-        $textContent->delete();
+        app(ContentOperations::class)->delete($textContent);
 
         return response()->json(status: 204);
     }

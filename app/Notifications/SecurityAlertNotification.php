@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Vulnerability;
+use App\Notifications\Concerns\HasNotificationDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,6 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class SecurityAlertNotification extends Notification implements ShouldQueue
 {
+    use HasNotificationDelivery;
     use Queueable;
 
     public function __construct(public Vulnerability $vulnerability)
@@ -22,7 +24,7 @@ class SecurityAlertNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return $this->deliveryChannels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -49,10 +51,29 @@ class SecurityAlertNotification extends Notification implements ShouldQueue
      */
     public function toArray(object $notifiable): array
     {
+        $version = $this->vulnerability->affectedVersion;
+
         return [
+            'type' => 'security_alert',
+            'title' => __('notifications.security_alert.subject', ['cve' => $this->vulnerability->cve_id]),
+            'message' => __('notifications.security_alert.body', [
+                'cve' => $this->vulnerability->cve_id,
+                'severity' => $this->vulnerability->getSeverityLabelAttribute(),
+                'software' => $version?->software?->name ?? 'n/a',
+                'version' => $version?->version_number ?? 'n/a',
+            ]),
+            'action_url' => url('/security/'.$this->vulnerability->id),
             'vulnerability_id' => $this->vulnerability->id,
             'cve_id' => $this->vulnerability->cve_id,
             'severity' => $this->vulnerability->severity?->value,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return $this->toArray($notifiable);
     }
 }

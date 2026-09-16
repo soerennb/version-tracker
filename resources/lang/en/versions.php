@@ -24,6 +24,7 @@ return [
         'actions' => [
             'comment' => 'Comment',
             'approved' => 'Approved',
+            'published' => 'Published',
             'rejected' => 'Rejected',
         ],
         'reject_reasons' => [
@@ -37,5 +38,12 @@ return [
     ],
     'governance' => [
         'four_eyes_required' => 'Critical releases require approval by another user.',
+        'approve_requires_pending' => 'Only pending drafts can be approved.',
+        'reject_requires_pending' => 'Only pending drafts can be rejected.',
+        'not_ready' => 'This release is not ready for approval yet.',
+        'override_not_allowed' => 'You are not allowed to override release readiness.',
+        'override_reason_required' => 'A reason is required when overriding release readiness.',
+        'publish_requires_approval' => 'A release must be approved before it can be published.',
+        'approval_invalidated' => 'This change resets the approval and requires another review.',
     ],
 ];

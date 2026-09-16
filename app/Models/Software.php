@@ -73,6 +73,21 @@ class Software extends Model
         return $this->hasMany(SoftwareDependency::class, 'depends_on_software_id');
     }
 
+    public function versionSources(): HasMany
+    {
+        return $this->hasMany(VersionSource::class);
+    }
+
+    public function sourceSyncRuns(): HasMany
+    {
+        return $this->hasMany(SourceSyncRun::class);
+    }
+
+    public function latestSourceSyncRun(): HasOne
+    {
+        return $this->hasOne(SourceSyncRun::class)->latestOfMany();
+    }
+
     public function latestVersion(): HasOne
     {
         return $this->hasOne(Version::class)->latestOfMany('release_date');

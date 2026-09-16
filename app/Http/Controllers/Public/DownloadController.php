@@ -15,7 +15,8 @@ class DownloadController extends Controller
     {
         abort_unless(
             $version->status === VersionStatus::PUBLISHED
-            && $fileAttachment->version_id === $version->id,
+            && $fileAttachment->version_id === $version->id
+            && $fileAttachment->is_public !== false,
             404,
         );
 

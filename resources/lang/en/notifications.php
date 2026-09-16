@@ -22,4 +22,14 @@ return [
         'subject' => 'Fix available for :cve',
         'body' => 'A fixed version (:version) is available for :cve in :software.',
     ],
+    'version_published' => [
+        'subject' => 'Version :version published',
+        'body' => 'Version :version of :software is now publicly available.',
+    ],
+    'invitation' => [
+        'subject' => 'Invitation to VersionTracker',
+        'body' => 'You have been invited to create an account in :app.',
+        'action' => 'Accept invitation',
+        'expiry' => 'This link is valid until :date.',
+    ],
 ];

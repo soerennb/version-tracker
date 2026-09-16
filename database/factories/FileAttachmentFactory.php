@@ -19,9 +19,17 @@ class FileAttachmentFactory extends Factory
         return [
             'version_id' => Version::factory(),
             'filename' => fake()->uuid().'.pdf',
+            'artifact_type' => 'release',
+            'platform' => null,
+            'architecture' => null,
             'file_path' => 'attachments/'.fake()->uuid().'.pdf',
             'mime_type' => 'application/pdf',
             'size' => fake()->numberBetween(10_000, 1_000_000),
+            'checksum' => null,
+            'checksum_algorithm' => null,
+            'signature' => null,
+            'verification_status' => 'unverified',
+            'is_public' => true,
         ];
     }
 }

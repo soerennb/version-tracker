@@ -29,6 +29,14 @@
                             <p class="text-gray-500">{{ __('versions.readiness.label') }}</p>
                             <p class="font-medium text-gray-950">{{ $readiness['score'] }}% · {{ $readiness['passed'] }}/{{ $readiness['total'] }}</p>
                         </div>
+                        <div>
+                            <p class="text-gray-500">{{ __('filament.versions.fields.status') }}</p>
+                            <p class="font-medium text-gray-950">{{ $version->status?->label() ?? 'n/a' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">{{ __('filament.versions.fields.approval_status') }}</p>
+                            <p class="font-medium text-gray-950">{{ $version->approval_status?->label() ?? 'n/a' }}</p>
+                        </div>
                     </div>
 
                     @if (! $readiness['is_ready'])

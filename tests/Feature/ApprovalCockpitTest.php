@@ -88,9 +88,11 @@ class ApprovalCockpitTest extends TestCase
     public function test_approval_page_selects_pending_version_for_cockpit(): void
     {
         $pendingVersion = Version::factory()->create([
+            'status' => VersionStatus::DRAFT,
             'approval_status' => ApprovalStatus::PENDING,
         ]);
         $approvedVersion = Version::factory()->create([
+            'status' => VersionStatus::DRAFT,
             'approval_status' => ApprovalStatus::APPROVED,
         ]);
 
@@ -104,6 +106,6 @@ class ApprovalCockpitTest extends TestCase
         $method = new ReflectionMethod(VersionApproval::class, 'selectedVersion');
         $method->setAccessible(true);
 
-        $this->assertNull($method->invoke($page));
+        $this->assertSame($approvedVersion->id, $method->invoke($page)->id);
     }
 }
