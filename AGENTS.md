@@ -9,7 +9,7 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
 - php - 8.4.25
-- filament/filament (FILAMENT) - v5.8.1
+- filament/filament (FILAMENT) - v5.8.2
 - laravel/framework (LARAVEL) - v13.32.0
 - laravel/prompts (PROMPTS) - v0.3.24
 - laravel/sanctum (SANCTUM) - v4.3.3
@@ -47,14 +47,14 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Laravel Boost is an MCP server that comes with powerful tools designed specifically for this application. Use them.
 
 ## Artisan
-- Use the `list-artisan-commands` tool when you need to call an Artisan command to double check the available parameters.
+- Use an available Laravel Boost command-discovery tool when you need to verify Artisan parameters. If that tool is not exposed, use `php artisan list` or `php artisan <command> --help` locally.
 
 ## URLs
 - Whenever you share a project URL with the user you should use the `get-absolute-url` tool to ensure you're using the correct scheme, domain / IP, and port.
 
 ## Tinker / Debugging
-- You should use the `tinker` tool when you need to execute PHP to debug code or query Eloquent models directly.
-- Use the `database-query` tool when you only need to read from the database.
+- Use Laravel Boost's `database-query` tool for read-only database inspection and its browser/runtime diagnostics for application errors.
+- Use an exposed Tinker tool for direct Eloquent/PHP debugging when available; otherwise prefer focused tests or a narrowly scoped Artisan command. Do not add ad-hoc debug scripts.
 
 ## Reading Browser Logs With the `browser-logs` Tool
 - You can read browser logs, errors, and exceptions using the `browser-logs` tool from Boost.
@@ -107,29 +107,29 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Add useful array shape type definitions for arrays when appropriate.
 
 ## Enums
-- Typically, keys in an Enum should be TitleCase. For example: `FavoritePerson`, `BestLake`, `Monthly`.
+- Follow the existing enum convention: case names are generally uppercase (for example, `DRAFT`, `ADMIN`, and `IN_PROGRESS`) and backed values use lower snake case where applicable. Preserve existing case names because they are part of the application's API and persistence contract.
 
 
 === laravel/core rules ===
 
 ## Do Things the Laravel Way
 
-- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). You can list available Artisan commands using the `list-artisan-commands` tool.
+- Use `php artisan make:` commands to create new files (i.e. migrations, controllers, models, etc.). Use an available Laravel Boost command-discovery tool when possible; otherwise use `php artisan list` or `php artisan <command> --help` locally.
 - If you're creating a generic PHP class, use `artisan make:class`.
-- Pass `--no-interaction` to all Artisan commands to ensure they work without user input. You should also pass the correct `--options` to ensure correct behavior.
+- Pass `--no-interaction` to Artisan commands used by automation and provide all required options. Commands intended for an administrator, such as a fresh `app:install`, may remain interactive when run deliberately in a terminal.
 
 ### Database
 - Always use proper Eloquent relationship methods with return type hints. Prefer relationship methods over raw queries or manual joins.
 - Use Eloquent models and relationships before suggesting raw database queries
-- Avoid `DB::`; prefer `Model::query()`. Generate code that leverages Laravel's ORM capabilities rather than bypassing them.
+- Prefer Eloquent models and relationships for ordinary domain reads and writes. Use `DB::transaction`, `DB::table`, and carefully scoped raw expressions when they are appropriate for transactions, system tables/migrations, or complex aggregates.
 - Generate code that prevents N+1 query problems by using eager loading.
 - Use Laravel's query builder for very complex database operations.
 
 ### Model Creation
-- When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `list-artisan-commands` to check the available options to `php artisan make:model`.
+- When creating new models, create useful factories and seeders for them too. Check the available options with a Laravel Boost command-discovery tool or locally with `php artisan make:model --help`.
 
 ### APIs & Eloquent Resources
-- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
+- Use Eloquent API Resources and Form Requests for API boundaries. The current API intentionally uses unversioned `/api` routes; do not introduce `/v1` without an explicit API versioning decision.
 
 ### Controllers & Validation
 - Always create Form Request classes for validation rather than inline validation in controllers. Include both validation rules and custom error messages.
@@ -145,7 +145,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - When generating links to other pages, prefer named routes and the `route()` function.
 
 ### Configuration
-- Use environment variables only in configuration files - never use the `env()` function directly outside of config files. Always use `config('app.name')`, not `env('APP_NAME')`.
+- Use environment variables through configuration and `config()` in application services and business logic. Direct `env()` reads are allowed only where Laravel bootstrapping requires them, such as trusted host/proxy middleware configuration in `bootstrap/app.php`.
 
 ### Testing
 - When creating models for tests, use the factories for the models. Check if the factory has custom states that can be used before manually setting up the model.
@@ -164,15 +164,15 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - Since Laravel 11, Laravel has a new streamlined file structure which this project uses.
 
 ### Laravel 13 Structure
-- No middleware files in `app/Http/Middleware/`.
-- `bootstrap/app.php` is the file to register middleware, exceptions, and routing files.
+- The streamlined Laravel 13 structure has no default application HTTP Kernel. Custom middleware may still live in `app/Http/Middleware/` and must be registered or aliased in `bootstrap/app.php`.
+- `bootstrap/app.php` registers middleware, exceptions, routing, health checks, and other application bootstrap behavior.
 - `bootstrap/providers.php` contains application specific service providers.
-- **No app\Console\Kernel.php** - use `bootstrap/app.php` or `routes/console.php` for console configuration.
+- **No `app/Console/Kernel.php`** - use `bootstrap/app.php` or `routes/console.php` for console configuration.
 - **Commands auto-register** - files in `app/Console/Commands/` are automatically available and do not require manual registration.
 
 ### Database
 - When modifying a column, the migration must include all of the attributes that were previously defined on the column. Otherwise, they will be dropped and lost.
-- Laravel 11 allows limiting eagerly loaded records natively, without external packages: `$query->latest()->limit(10);`.
+- Laravel supports limiting eagerly loaded records natively, without external packages: `$query->latest()->limit(10);`. Use this where it matches the query's intent and verify the behavior against the installed framework version when changing related loading logic.
 
 ### Models
 - Casts can and likely should be set in a `casts()` method on a model rather than the `$casts` property. Follow existing conventions from other models.
@@ -182,7 +182,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ## Livewire Core
 - Use the `search-docs` tool to find exact version specific documentation for how to write Livewire & Livewire tests.
-- Use the `php artisan make:livewire [Posts\CreatePost]` artisan command to create new components
+- Use the `php artisan make:livewire [Posts\CreatePost]` Artisan command when adding a class-based Livewire component. Check whether the feature belongs in the public Vue SPA or the Filament admin area first.
 - State should live on the server, with the UI reflecting it.
 - All Livewire requests hit the Laravel backend, they're like regular HTTP requests. Always validate form data, and run authorization checks in Livewire actions.
 
@@ -231,7 +231,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ### Component And API Conventions
 - Verify Livewire code against the v4 documentation before making assumptions based on older v2/v3 behavior.
-- Use the `App\Livewire` namespace for class-based components unless the existing codebase is intentionally using one of Livewire 4's newer component formats.
+- Use the `App\Livewire` namespace for new class-based Livewire components unless the existing codebase is intentionally using one of Livewire 4's newer component formats. Filament pages, resources, and widgets under `app/Filament/` are already Livewire-backed; the public application UI remains Vue 3 under `resources/js/`.
 - Use `$this->dispatch()` for server-side event dispatching.
 - When using `wire:model` modifiers, remember Livewire 4 changed some client-side sync timing semantics; prefer explicit modifiers such as `wire:model.live` when immediate synchronization is required.
 
@@ -259,12 +259,13 @@ protected function isAccessible(User $user, ?string $path = null): bool
 
 ## GitHub Actions CI
 
-- Continuous Integration runs on pull requests and pushes to `master`. It classifies changed files and runs only the relevant checks: backend changes receive the Vite build plus PHP and MariaDB tests; frontend changes receive the Vite build; infrastructure changes receive Compose, installer, and container backup/restore checks. Workflow changes run the full CI suite.
-- Security Audit runs a secret scan on every pull request and `master` push. Dependency audits run for dependency or workflow changes; SAST runs for source changes on `master` and in the scheduled weekly audit. The required merge checks are `CI gate` and `Security gate`.
-- CI is validation-only: do not add deployment steps, repository write permissions, or secrets without explicit approval.
-- The frontend workflows use Node.js 24; local frontend checks require Node.js 22.18 or later.
-- Tags matching `v0.*.*` validate the release again, publish a GHCR container image with provenance and an SBOM, smoke-test its digest, and generate GitHub release notes; they must not deploy the application.
-- Before handing off PHP or frontend changes, run the applicable local equivalent of the CI checks. CI runs full Pint and fails if it produces a diff.
+- Continuous Integration runs on pull requests, pushes to `master`, and manual `workflow_dispatch` runs. Change classification selects the relevant checks: backend changes run the frontend build plus PHP/Pint and MariaDB tests; frontend changes run the frontend build; infrastructure changes run Compose, the installer, container checks, and backup/restore checks; workflow changes run the full CI matrix.
+- Changes limited to README/docs/agent metadata are currently unclassified, so component jobs are skipped and the gate accepts skipped jobs; Security Audit still runs its secret scan.
+- Security Audit runs on pull requests, pushes to `master`, and weekly on Monday. Secret scanning runs on every trigger; dependency audits run for dependency/automation changes or weekly; SAST runs for source changes on `master` or weekly. The required merge checks are `CI gate` and `Security gate`, supplied by the active `Protect master` repository ruleset.
+- The CI, Security Audit, and reusable Release Validation workflows are validation-only. The tag-triggered Release workflow intentionally has `contents: write` and `packages: write` permissions to publish exact, minor, and `latest` GHCR images with provenance and an SBOM, smoke-test and scan the immutable digest, build/checksum a release bundle, and create GitHub release notes; it does not deploy the application.
+- GitHub workflows use PHP 8.4 and Node.js 24; local frontend checks require PHP >= 8.4.1 and Node.js >= 22.18. Production images use PHP 8.5 and Node.js 26.
+- Tags matching `v0.*.*` trigger release validation and publication; release tags must be based on `master`.
+- Before handing off PHP, frontend, workflow, or infrastructure changes, run the applicable local equivalent of the CI checks. CI runs full Pint and fails if it produces a diff.
 
 
 === phpunit/core rules ===
@@ -285,7 +286,7 @@ protected function isAccessible(User $user, ?string $path = null): bool
 - To filter on a particular test name: `php artisan test --filter=testName` (recommended after making a change to a related file).
 </laravel-boost-guidelines>
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:970c3bf2 -->
+<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:6cd5cc61 -->
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
@@ -329,7 +330,6 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
    # Team-maintainer opt-in only, unless current instructions forbid it:
    git pull --rebase
-   bd dolt push
    git push
    git status
    ```
@@ -341,26 +341,39 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 - If a required sync or push is blocked, stop and report the exact command and error.
 <!-- END BEADS INTEGRATION -->
 
-<!-- BEGIN BEADS CODEX SETUP: generated by bd setup codex -->
-## Beads Issue Tracker
+## Project Context
 
-Use Beads (`bd`) for durable task tracking in repositories that include it. Use the `beads` skill at `.agents/skills/beads/SKILL.md` (project install) or `~/.agents/skills/beads/SKILL.md` (global install) for Beads workflow guidance, then use the `bd` CLI for issue operations.
+### Source of truth and runtime
 
-### Quick Reference
+- Treat composer.lock, package-lock.json, .php-version, Dockerfile, compose*.yml, docker-vhost.conf, Caddyfile, environment examples, and .github/ as authoritative. Exact dependency patch versions can change through Dependabot; do not update these instructions from local runtime data alone.
+- Compatibility floors are PHP >= 8.4.1 and Node.js >= 22.18. CI runs PHP 8.4 and Node.js 24. The production image runs PHP 8.5 and Node.js 26, with MariaDB 11.8.8 behind Caddy 2.11.4. The default local database is SQLite.
+- Key frontend packages are Vue 3.5.42, Vue Router 5.3.1, Vue I18n 11.4.10, Vite 8.3.0, and Tailwind 4.3.3.
 
-```bash
-bd ready                # Find available work
-bd show <id>            # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>           # Complete work
-bd prime                # Refresh Beads context
-```
+### Architecture and boundaries
 
-### Rules
+- The public product is a Vue 3 SPA in resources/js/, with client routes in resources/js/routes.js, German/English i18n, runtime feature flags loaded from /api/public/runtime, and pages for products, releases, timelines, search, security, comparison, and authentication/account flows.
+- The Filament admin lives at /admin in app/Filament/; pages, resources, and widgets are Livewire-backed. Keep the public Vue boundary separate from admin Livewire components.
+- The API is intentionally unversioned under /api. Public /api/public/* endpoints expose published data only. Authenticated routes use auth:sanctum, API throttling, granular token abilities, and EnforceApiTokenPermissions. Use Form Requests and API Resources at API boundaries.
+- MCP is exposed through /mcp/versiontracker with upload transfer endpoints under /mcp/uploads/{upload}; access is protected by Sanctum and the mcp ability. Server tools live in app/Mcp/Servers/VersionTrackerServer.php.
+- bootstrap/app.php owns application bootstrap, custom middleware, routing, health checks, and trusted host/proxy configuration. Custom middleware belongs under app/Http/Middleware/ and is registered or aliased there.
 
-- Use `bd` for all task tracking; do not create markdown TODO lists.
-- Run `bd prime` when Beads context is missing or stale. Codex 0.129.0+ can load Beads context automatically through native hooks; use `/hooks` to inspect or toggle them.
-- Keep persistent project memory in Beads via `bd remember`; do not create ad hoc memory files.
+### Domain and security invariants
 
-**Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
-<!-- END BEADS CODEX SETUP -->
+- Only published content is public. Versions move through draft, approval, readiness, publish, and reject flows; public release data and downloads must not expose drafts or unapproved records.
+- Production deployment requires an eligible published/approved version. Deployment logbook states are Planned, Approved, In Progress, Succeeded, Failed, Canceled, and Rolled Back; corrections and audit history must remain traceable.
+- SBOM ingestion supports CycloneDX and SPDX, with OSV vulnerability data and optional EPSS/CISA KEV enrichment. GitHub release synchronization is disabled by default, queued, and idempotent.
+- Roles are admin, editor, and viewer, with granular API token abilities. Tokens may be REST- or MCP-scoped, expire, and can be revoked; no endpoint or tool may bypass authorization.
+- Preserve rate limits, trusted host/proxy handling, security headers, upload allowlists and size limits, and safe public download behavior.
+
+### Commands and operations
+
+- On a fresh database, composer run setup followed by php artisan app:install --no-demo installs the application. app:install aborts when users already exist; --demo creates public demo credentials and requires an explicit local-only decision. Normal administrator passwords must be at least 12 characters.
+- composer run dev starts the local server, database-backed workers for notifications, imports, and default queues, log output, and Vite. The Docker worker currently consumes notifications; the scheduler service runs schedule:work.
+- Scheduled operations include app:lifecycle-alerts, app:sync-github-releases, hourly MCP upload pruning, and daily sanctum:prune-expired --hours=24. GitHub synchronization supports --software, --dry-run, and --force.
+
+### GitHub and release operations
+
+- Active workflows are Change classification, Continuous Integration, Release Validation, Release, and Security Audit; Dependabot also manages Composer, npm, GitHub Actions, and Docker updates weekly on Monday with grouped minor/patch updates and major updates ignored.
+- The classifier covers backend, frontend, infrastructure, dependency, source, and automation changes, including .env.example, .php-version, docker-vhost.conf, artisan, and .github/dependabot.yml. README/docs/agent metadata remain intentionally unclassified, so component jobs skip while secret scanning still runs.
+- The active Protect master repository ruleset requires pull requests, resolved review threads, and the CI gate plus Security gate status checks. Classic branch protection is not the source of truth.
+- Tags matching v0.*.* must be based on master and trigger validation, GHCR publication with provenance and SBOM, immutable-digest smoke tests/scanning, a checksummed release bundle, and generated release notes. The release workflow does not deploy the application.

@@ -61,23 +61,52 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 - CI support floor: PHP 8.4 and Node.js 24.
 - Local development: PHP >= 8.4.1 and Node.js >= 22.18.
-- Production image: PHP 8.5 and Node.js 26.
+- Production image: PHP 8.5 and Node.js 26, with MariaDB 11.8.8 behind Caddy 2.11.4.
+- The default local database is SQLite.
+- The lockfiles (composer.lock and package-lock.json), .php-version, Docker files, Compose files, and GitHub workflows are the source of truth. Exact dependency patch versions may change through Dependabot.
+- Key frontend packages are Vue 3.5.42, Vue Router 5.3.1, Vue I18n 11.4.10, Vite 8.3.0, and Tailwind 4.3.3.
 
 
 ## Build & Test
 
-_Add your build and test commands here_
+Use these commands for the normal local workflow:
 
 ```bash
-# Example:
-# npm install
-# npm test
+composer run setup
+php artisan app:install --no-demo
+composer run dev
+npm run build
+vendor/bin/pint --dirty
+php artisan test
 ```
+
+Run app:install --demo only on a fresh local database when demo credentials are explicitly wanted. The regular installer requires an administrator password of at least 12 characters.
+
+composer run dev already starts Vite. Use npm run dev separately only when the Laravel services are started by another process.
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+- The public product is a Vue 3 SPA in resources/js/, with client routes in resources/js/routes.js, German/English i18n, public runtime feature flags, and pages for products, releases, timelines, search, security, comparison, and authentication/account flows.
+- The Filament admin lives at /admin in app/Filament/; pages, resources, and widgets are Livewire-backed.
+- The API is intentionally unversioned under /api. Public /api/public/* endpoints expose published data only. Authenticated endpoints use auth:sanctum, API throttling, granular token abilities, and EnforceApiTokenPermissions.
+- MCP is exposed through /mcp/versiontracker with upload transfer endpoints under /mcp/uploads/{upload}; access is protected by Sanctum and the mcp ability. Server tools live in app/Mcp/Servers/VersionTrackerServer.php.
+- bootstrap/app.php owns application bootstrap, custom middleware, routing, health checks, and trusted host/proxy configuration. Custom middleware belongs under app/Http/Middleware/ and is registered or aliased there.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- Use Eloquent models, typed relationships, Form Requests, API Resources, policies/gates, and queued jobs according to the existing sibling implementations. Use DB::transaction and DB::table where transaction boundaries, system tables, or complex aggregates require them.
+- Keep public content publication-aware: drafts, unapproved versions, and unpublished releases must not leak through public API or download routes. Version workflows include approval, readiness checks, publish/reject, and release metadata.
+- Production deployments require an eligible published/approved version. Deployment logbook states and corrections are audited; do not bypass the service-layer authorization and state transitions.
+- SBOM ingestion supports CycloneDX/SPDX and OSV vulnerability data, with optional EPSS and CISA KEV enrichment. GitHub release sync is disabled by default, queued, and idempotent.
+- Roles are admin, editor, and viewer, with granular API token abilities. Tokens may be REST- or MCP-scoped, expire, and can be revoked; no endpoint or tool may bypass authorization.
+- Preserve rate limits, trusted host/proxy handling, security headers, upload allowlists and size limits, and safe public download behavior.
+- Read configuration through config() in application code. Keep trusted host/proxy env() reads confined to bootstrap configuration. Preserve the existing Vue/Filament boundary and do not introduce Livewire public pages without a deliberate architectural decision.
+
+## Operations & CI
+
+- On a fresh database, composer run setup followed by php artisan app:install --no-demo installs the application. app:install aborts when users already exist; --demo creates public demo credentials and requires an explicit local-only decision. Normal administrator passwords must be at least 12 characters.
+- composer run dev starts the local server, queue workers for notifications,imports,default, log output, and Vite. The Docker worker currently consumes notifications; the scheduler runs schedule:work.
+- Scheduled operations include app:lifecycle-alerts, app:sync-github-releases, hourly MCP upload pruning, and daily sanctum:prune-expired --hours=24. GitHub sync supports --software, --dry-run, and --force.
+- CI classifies backend, frontend, infrastructure, dependency, source, and automation changes. README/docs/agent metadata changes are intentionally unclassified; component jobs skip while secret scanning still runs.
+- Active workflows are Change classification, Continuous Integration, Release Validation, Release, and Security Audit; Dependabot manages Composer, npm, GitHub Actions, and Docker updates weekly with grouped minor/patch updates and major updates ignored.
+- Required merge checks are CI gate and Security gate from the active Protect master repository ruleset; classic branch protection is not the source of truth. Tags matching v0.*.* must be based on master and run validation, publish GHCR images with provenance/SBOM, smoke-test and scan the immutable digest, create a checksummed release bundle, and generate release notes; the release workflow does not deploy the application.

@@ -1,19 +1,70 @@
 # VersionTracker
 
-VersionTracker is a Laravel 13 application that centralizes software versions, releases, and security information. The project provides a modern Filament 5 admin panel (incl. Analytics Dashboard) as well as a public Vue frontend with timeline visualization.
+VersionTracker is a self-hosted release intelligence application for tracking software versions, release notes, support windows, dependencies, and security posture. It combines a public Vue frontend with a Filament administration panel for editorial workflows, governance, integrations, and operations.
 
-## Features
+## Capabilities
 
-- **Filament Admin** with approval workflow, Analytics Dashboard, and Audit Tools
-- **Release Timeline SPA** (Vue 3 + Vite) including software filter
-- **Demo Data & User** for an immediately populated showcase
-- **Tailwind v4** Design System with custom Filament theme
+### Public release intelligence
+
+- Product and release catalog with published-version visibility
+- Localized release notes and application copy in German and English
+- Filterable release timeline with product, support, security, date, and text filters
+- Global search across products, releases, and security advisories
+- Release comparison with notes, attachments, advisories, and dependency changes
+- Lifecycle, support, EOL, and LTS information
+- Public release attachments and safe downloads
+- RSS release feed at `/feed/releases.xml`
+
+Only published content is exposed publicly. Catalog, search, products, timeline, security, and comparison modules can be enabled or disabled independently through runtime settings.
+
+### Security and compliance
+
+- Public security center with advisory details, severity, status, CVSS, exploitability, affected releases, and fixed versions
+- Vulnerability and dependency management in the admin panel and API
+- Dependency map and impact analysis for software, releases, and vulnerabilities
+- SBOM ingestion for CycloneDX and SPDX documents
+- SBOM component normalization, hash/license handling, and vulnerability findings
+- OSV enrichment with optional EPSS and CISA KEV risk intelligence
+- Release-readiness checks for content, security, SBOM, dependencies, attachments, and lifecycle data
+- Expiring readiness exceptions with ownership and audit history
+
+### Governance and operations
+
+- Filament 5 administration panel with analytics, work queues, and security dashboards
+- Draft, approve, publish, and reject workflow for releases
+- Readiness scores, review history, audit diffs, optional four-eyes approval, and controlled readiness overrides
+- GitHub release and tag import with queued, idempotent synchronization and sync status reporting
+- Deployment logbook with environments, approvals, lifecycle events, rollback, correction, and external-reference idempotency
+- CSV exports for versions, software, audit logs, and deployments
+- PDF version exports and per-release JSON compliance packages
+- Configurable application, access, notification, governance, operations, GitHub, and security settings
+
+### Accounts and integrations
+
+- Open, invitation-only, or disabled registration modes
+- Email verification, password reset, invitations, active-user controls, and session management
+- Admin, editor, and viewer roles with additional permission abilities
+- In-app and email notifications for approvals, releases, security alerts, fixes, and upcoming EOL events
+- Product subscriptions for release, security, EOL, or all event types
+- Scoped Laravel Sanctum REST API for content, governance, SBOM, impact analysis, deployments, notifications, subscriptions, and exports
+- Authenticated Laravel MCP server for structured content operations, approval workflows, attachment uploads, SBOM ingestion, and readiness checks
+
+### Platform and hardening
+
+- Runtime feature flags and configurable public copy, locales, and support links
+- Background queues for notifications and imports
+- Scheduled GitHub synchronization and lifecycle alerts
+- API, authentication, and verification rate limits
+- Security headers, trusted-host and trusted-proxy controls, upload restrictions, token expiry, and revocation
+- Health endpoint at `/up` for local and container deployments
 
 ## Stack
 
-- PHP 8.4 · Laravel 13 · Livewire 4 · Filament 5
-- MariaDB/MySQL/PostgreSQL/SQLite (Default: SQLite)
-- Node 22.18+ · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
+- PHP 8.4.1+ · Laravel 13 · Livewire 4 · Filament 5
+- Laravel Sanctum · Laravel MCP · Spatie Laravel Settings
+- Laravel Excel · Dompdf · OpenAPI annotations
+- MariaDB, MySQL, PostgreSQL, or SQLite (SQLite is the default)
+- Node.js 22.18+ · npm 10 · Vite 8 · Vue 3 · Vue Router 5 · Vue I18n 11 · Tailwind CSS 4
 
 | Runtime context | PHP | Node.js |
 | --------------- | --- | ------- |
@@ -23,61 +74,108 @@ VersionTracker is a Laravel 13 application that centralizes software versions, r
 
 ## Requirements
 
-- PHP >= 8.4.1 + Composer 2.x
-- Node.js >= 22.18 + npm 10
-- SQLite (default) or an alternative database
+- PHP >= 8.4.1 and Composer 2.x
+- Node.js >= 22.18.0 and npm 10
+- SQLite for the default setup, or a configured MariaDB, MySQL, or PostgreSQL database
 
-## Installation
+## Local installation
 
-1. **Clone Repository**
+Clone the repository and run the standard setup workflow:
 
-    ```bash
-    git clone https://github.com/<your-org>/versiontracker.git
-    cd versiontracker
-    ```
+```bash
+git clone https://github.com/soerennb/version-tracker.git
+cd version-tracker
+composer run setup
+```
 
-2. **Install the Application**
+`composer run setup` creates `.env` and the default SQLite database, generates the application key, runs migrations, installs locked frontend dependencies, and builds the assets.
 
-    ```bash
-    composer run setup
-    ```
+On a fresh database, create the first administrator interactively:
 
-    This creates the SQLite database, generates the application key, runs migrations, installs locked frontend dependencies, and builds the assets.
+```bash
+php artisan app:install --no-demo
+```
 
-3. **Start Application**
-    ```bash
-    composer run dev
-    ```
-    App available at `http://localhost:8000`. The Filament panel is at `/admin`.
+Start the local application stack:
 
-For demo data, run `php artisan db:seed` after setup.
+```bash
+composer run dev
+```
 
-## Demo Accounts
+This starts the Laravel server, queue listener, log viewer, and Vite development server. The public application is available at `http://localhost:8000`; the Filament panel is available at `/admin`.
 
-| Environment    | User               | Password   |
-| -------------- | ------------------ | ---------- |
-| Filament Admin | `demo@example.com` | `password` |
+### Demo data
 
-## Frontend Access
+For a local evaluation installation, use the demo mode on a fresh database instead of `--no-demo`:
 
-- Public Timeline SPA: `/timeline`
-- API Endpoints: `/api/public/*` (e.g. `/api/public/timeline`)
+```bash
+php artisan app:install --demo
+```
 
-## Development Workflows
+This creates the demo dataset and the following demo account:
 
-- **Code Style**: `vendor/bin/pint --dirty`
-- **Tests**: `php artisan test`
-- **Vite Dev Server**: `npm run dev`
-- **Build**: `npm run build`
-- **Local App Stack**: `composer run dev`
+| User | Password |
+| ---- | -------- |
+| `demo@example.com` | `password` |
 
-## Self-Hosting with Docker
+The demo credentials are intentionally weak and must never be used for a production deployment.
 
-Each `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker` and a compact deployment bundle. The installer requires a concrete release tag; production deployments never use `latest`.
+## Application access
 
-### Download a deployment bundle
+| Surface | URL | Purpose |
+| ------- | --- | ------- |
+| Public application | `/` | Vue SPA with home, catalog, timeline, search, security, release, comparison, and account views |
+| Product catalog | `/products` | Browse and filter products and their published releases |
+| Release intelligence | `/timeline`, `/releases/:id`, `/products/:productId/compare` | Explore, inspect, and compare published releases |
+| Security center | `/security`, `/security/:id` | Browse and inspect public security advisories |
+| Account area | `/account` | Notifications, subscriptions, invitations, and account actions |
+| Filament admin | `/admin` | Manage content, governance, security, users, deployments, and settings |
+| Public JSON API | `/api/public/*` | Read-only overview, runtime, catalog, search, timeline, comparison, and security data |
+| Public RSS feed | `/feed/releases.xml` | Published release updates in RSS 2.0 format |
+| Authenticated REST API | `/api/*` | Manage resources and run governance, SBOM, deployment, impact, audit, and export workflows |
+| Authenticated MCP server | `/mcp/versiontracker` | Automate VersionTracker through the Laravel MCP interface |
 
-Download the exact bundle and checksum from the GitHub Release page, then verify the archive before unpacking it:
+The public API and frontend expose published data only and are protected by API throttling. Public API modules follow the same runtime feature flags as the frontend.
+
+### API authentication
+
+Authenticated REST and MCP requests use Laravel Sanctum bearer tokens:
+
+```http
+Authorization: Bearer <token>
+Accept: application/json
+```
+
+Administrators create tokens under **Admin → API Tokens**. Tokens can be scoped to REST or MCP access, receive granular abilities, expire, and be revoked. The token secret is shown only when it is created.
+
+## Development workflows
+
+```bash
+# Run the complete local stack
+composer run dev
+
+# Run the frontend development server only
+npm run dev
+
+# Build frontend assets
+npm run build
+
+# Format changed PHP files
+vendor/bin/pint --dirty
+
+# Run the PHPUnit suite
+php artisan test
+```
+
+The application uses database-backed queues and scheduling in production. The Docker deployment runs separate application, worker, and scheduler services.
+
+## Self-hosting with Docker
+
+Every `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker` and a compact deployment bundle. Use a concrete release tag or digest for production; `latest` is intended for evaluation only.
+
+### Deployment bundle
+
+Download the exact bundle and checksum from a GitHub Release, verify the archive, and unpack it:
 
 ```bash
 VERSION=v0.1.2
@@ -88,19 +186,18 @@ tar -xzf "versiontracker-deploy-${VERSION}.tar.gz"
 cd "versiontracker-deploy-${VERSION}"
 ```
 
-Cloning the repository remains supported for contributors, but operators only need this deployment bundle.
+### Installer
 
-### Existing reverse proxy or local network
+The installer supports an existing reverse proxy and a Caddy mode with automatic HTTPS:
 
 ```bash
-git clone https://github.com/soerennb/version-tracker.git
-cd version-tracker
 ./install.sh install
+./install.sh update
+./install.sh status
+./install.sh backup
 ```
 
-Choose `N` for Caddy, then enter the release tag (for example `v0.1.2`) and the exposed HTTP port. Point your existing reverse proxy at this port and configure `TRUSTED_PROXIES` in `.env.docker` with the proxy address.
-
-For unattended installations, provide the selected values explicitly and pipe only the administrator password through standard input:
+For unattended installations, select a concrete version and pipe the administrator password through standard input:
 
 ```bash
 printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
@@ -112,26 +209,16 @@ printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
   --admin-password-stdin
 ```
 
-### Public server with automatic HTTPS
+The installer creates protected environment files and secrets, initializes MariaDB, starts the application, worker, and scheduler services, runs migrations, and checks `/up`. In Caddy mode, ports 80 and 443 must be available and DNS must already point to the server. In proxy mode, configure the existing reverse proxy and set `TRUSTED_PROXIES` as described in the [self-hosting guide](docs/self-hosting.md), which also covers configuration, mail delivery, restore, and rollback.
 
-```bash
-git clone https://github.com/soerennb/version-tracker.git
-cd version-tracker
-./install.sh install
-```
+## CI and releases
 
-Choose `Y` for Caddy, provide a domain whose DNS already points to the server, and provide an ACME email address. Ports 80 and 443 must be free. The installer generates secrets, initializes MariaDB, asks whether to load demo data, and otherwise creates the first administrator interactively.
+- **CI gate** validates changed areas with frontend builds, PHP tests and Pint, SQLite/MariaDB integration checks, container and Compose validation, installer checks, and backup/restore tests.
+- **Security gate** runs secret scanning on every pull request and `master` push, plus dependency audits and Semgrep SAST for the relevant changes.
+- **Tagged releases** matching `v0.*.*` repeat release validation, publish GHCR images with provenance and an SBOM, smoke-test the immutable image, run container security checks, and publish the deployment bundle with a SHA-256 checksum.
 
-### Updating
-
-```bash
-./install.sh update
-```
-
-Enter the next release tag. The update preserves the selected proxy mode, stops the old application runtime, pulls the image, runs database migrations before recreating `app`, `worker`, and `scheduler`, rebuilds Laravel caches, and verifies the health endpoint.
-
-Use `./install.sh status` to inspect a deployment and `./install.sh backup` before upgrades. The complete [self-hosting guide](docs/self-hosting.md) covers configuration, backup, restore, and rollback. Maintainers should follow the [release guide](docs/releasing.md) when publishing a tag.
+See the [release guide](docs/releasing.md) for the maintainer release procedure.
 
 ## License
 
-MIT – see `LICENSE`.
+MIT – see [LICENSE](LICENSE).
