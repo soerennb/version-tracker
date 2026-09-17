@@ -31,7 +31,7 @@ class EnforceApiTokenPermissions
             $route = $request->route();
             $controller = class_basename($route->getControllerClass());
             $action = $route->getActionMethod();
-            $entities = ['SoftwareController' => 'software', 'VersionController' => 'versions', 'TextContentController' => 'content', 'FileAttachmentController' => 'files', 'SoftwareDependencyController' => 'dependencies', 'VulnerabilityController' => 'vulnerabilities'];
+            $entities = ['SoftwareController' => 'software', 'VersionController' => 'versions', 'TextContentController' => 'content', 'FileAttachmentController' => 'files', 'SoftwareDependencyController' => 'dependencies', 'VulnerabilityController' => 'vulnerabilities', 'EnvironmentController' => 'environments', 'DeploymentController' => 'deployments'];
             if (isset($entities[$controller])) {
                 $entity = $entities[$controller];
                 $ability = match ($action) {
@@ -42,9 +42,31 @@ class EnforceApiTokenPermissions
                         'index','show' => 'download_files','store' => 'upload_files','update' => 'edit_files','destroy' => 'delete_files',default => null
                     };
                 }
+                if ($entity === 'environments') {
+                    $ability = match ($action) {
+                        'index', 'show' => 'view_environments',
+                        'store', 'update', 'destroy' => 'manage_environments',
+                        default => null,
+                    };
+                }
+                if ($entity === 'deployments') {
+                    $ability = match ($action) {
+                        'index', 'show' => 'view_deployments',
+                        'store' => 'create_deployments',
+                        'update' => 'create_deployments',
+                        'approve' => 'approve_deployments',
+                        'start', 'succeed', 'fail', 'rollback', 'cancel' => 'execute_deployments',
+                        'correct' => 'correct_deployments',
+                        default => null,
+                    };
+                }
             } else {
                 $ability = match ($controller) {
-                    'AuditLogController' => 'view_audit_logs','ExportController' => $action === 'compliance' ? 'export_compliance' : 'export_data','ImpactAnalysisController' => match ($action) {
+                    'AuditLogController' => 'view_audit_logs','ExportController' => match ($action) {
+                        'compliance' => 'export_compliance',
+                        'deploymentsCsv' => 'export_deployments',
+                        default => 'export_data',
+                    },'ImpactAnalysisController' => match ($action) {
                         'software' => 'view_software','version' => 'view_versions',default => 'view_vulnerabilities'
                     },'SbomController' => match ($action) {
                         'index', 'show' => 'view_sboms',

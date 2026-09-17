@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
 use App\Exports\AuditLogExport;
+use App\Exports\DeploymentExport;
 use App\Exports\SoftwareExport;
 use App\Exports\VersionsExport;
+use App\Models\Deployment;
 use App\Models\Version;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -86,6 +88,30 @@ class ExportService
         Excel::store($export, $filename, $this->disk());
 
         return $this->path($filename);
+    }
+
+    public function exportDeploymentsToCsv(?Collection $deployments = null, array $filters = []): string
+    {
+        $filename = $this->buildFilename('deployments', 'csv');
+        Excel::store(new DeploymentExport($deployments ?? $this->filteredDeployments($filters)), $filename, $this->disk());
+
+        return $this->path($filename);
+    }
+
+    public function filteredDeployments(array $filters = []): Collection
+    {
+        return Deployment::query()
+            ->with(['software', 'version', 'environment', 'creator', 'approver', 'executor'])
+            ->with('events.actor')
+            ->withCount('events')
+            ->when($filters['software_id'] ?? null, fn ($query, $softwareId) => $query->where('software_id', $softwareId))
+            ->when($filters['version_id'] ?? null, fn ($query, $versionId) => $query->where('version_id', $versionId))
+            ->when($filters['environment_id'] ?? null, fn ($query, $environmentId) => $query->where('environment_id', $environmentId))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '>=', Carbon::parse($date)->toDateString()))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '<=', Carbon::parse($date)->toDateString()))
+            ->latest('created_at')
+            ->get();
     }
 
     public function exportCompliancePackage(Version $version): string

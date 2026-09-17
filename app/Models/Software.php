@@ -53,6 +53,11 @@ class Software extends Model
         return $this->hasMany(Version::class);
     }
 
+    public function deployments(): HasMany
+    {
+        return $this->hasMany(Deployment::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

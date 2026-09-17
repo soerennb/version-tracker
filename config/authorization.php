@@ -39,6 +39,14 @@ return [
         'manage_exceptions',
         'export_compliance',
         'manage_feeds',
+        'view_environments',
+        'manage_environments',
+        'view_deployments',
+        'create_deployments',
+        'approve_deployments',
+        'execute_deployments',
+        'correct_deployments',
+        'export_deployments',
     ],
     'role_abilities' => [
         UserRole::ADMIN->value => [
@@ -67,6 +75,9 @@ return [
             'upload_sboms',
             'view_sboms',
             'view_readiness',
+            'view_environments',
+            'view_deployments',
+            'create_deployments',
         ],
         UserRole::VIEWER->value => [
             'view_software',
@@ -75,6 +86,8 @@ return [
             'download_files',
             'view_audit_logs',
             'view_vulnerabilities',
+            'view_environments',
+            'view_deployments',
         ],
     ],
 ];

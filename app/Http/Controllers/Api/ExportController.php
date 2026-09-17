@@ -49,6 +49,15 @@ class ExportController extends Controller
         return response()->download($path, basename($path));
     }
 
+    public function deploymentsCsv(Request $request): BinaryFileResponse
+    {
+        Gate::authorize('export_deployments');
+
+        $path = $this->exportService->exportDeploymentsToCsv(filters: $request->only($this->deploymentFilterKeys()));
+
+        return response()->download($path, basename($path));
+    }
+
     public function compliance(Version $version): BinaryFileResponse
     {
         Gate::authorize('export_compliance');
@@ -74,6 +83,21 @@ class ExportController extends Controller
             'approval_status',
             'security',
             'compliance_status',
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function deploymentFilterKeys(): array
+    {
+        return [
+            'software_id',
+            'version_id',
+            'environment_id',
+            'status',
+            'date_from',
+            'date_to',
         ];
     }
 }

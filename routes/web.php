@@ -28,6 +28,7 @@ Route::middleware('auth')->prefix('admin/exports')->name('admin.exports.')->grou
     Route::get('versions.pdf', [ExportController::class, 'versionsPdf'])->name('versions.pdf');
     Route::get('software.csv', [ExportController::class, 'softwareCsv'])->name('software.csv');
     Route::get('audit-logs.csv', [ExportController::class, 'auditLogsCsv'])->name('audit-logs.csv');
+    Route::get('deployments.csv', [ExportController::class, 'deploymentsCsv'])->name('deployments.csv');
 });
 
 Route::view('/{any}', 'welcome')->where('any', '^(?!admin|api).*$');

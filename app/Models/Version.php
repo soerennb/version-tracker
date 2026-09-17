@@ -87,6 +87,11 @@ class Version extends Model
         return $this->hasMany(VersionReview::class);
     }
 
+    public function deployments(): HasMany
+    {
+        return $this->hasMany(Deployment::class);
+    }
+
     public function sources(): HasMany
     {
         return $this->hasMany(VersionSource::class);

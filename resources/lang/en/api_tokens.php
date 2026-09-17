@@ -63,5 +63,13 @@ return [
         'manage_users' => 'Manage users',
         'manage_settings' => 'Manage settings',
         'manage_advanced_settings' => 'Manage advanced settings',
+        'view_environments' => 'View environments',
+        'manage_environments' => 'Manage environments',
+        'view_deployments' => 'View deployment logbook',
+        'create_deployments' => 'Plan deployments',
+        'approve_deployments' => 'Approve deployments',
+        'execute_deployments' => 'Execute deployments',
+        'correct_deployments' => 'Correct deployment logbook',
+        'export_deployments' => 'Export deployment logbook',
     ],
 ];
