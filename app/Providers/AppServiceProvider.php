@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Listeners\RecordLastLogin;
+use App\Models\Environment;
 use App\Models\Software;
 use App\Models\TextContent;
 use App\Models\User;
 use App\Models\Version;
 use App\Models\VersionReview;
+use App\Observers\EnvironmentObserver;
 use App\Observers\SoftwareObserver;
 use App\Observers\TextContentObserver;
 use App\Observers\VersionObserver;
@@ -83,5 +85,6 @@ class AppServiceProvider extends ServiceProvider
         TextContent::observe(TextContentObserver::class);
         Version::observe(VersionObserver::class);
         VersionReview::observe(VersionReviewObserver::class);
+        Environment::observe(EnvironmentObserver::class);
     }
 }

@@ -3,6 +3,9 @@
 namespace App\Filament\Resources\AuditLogs\Tables;
 
 use App\Models\AuditLog;
+use App\Models\Deployment;
+use App\Models\DeploymentEvent;
+use App\Models\Environment;
 use App\Models\Software;
 use App\Models\TextContent;
 use App\Models\Version;
@@ -55,6 +58,9 @@ class AuditLogsTable
                         TextContent::class => __('filament.audit.models.TextContent'),
                         Vulnerability::class => __('filament.audit.models.Vulnerability'),
                         VersionReview::class => __('filament.audit.models.VersionReview'),
+                        Environment::class => __('filament.audit.models.Environment'),
+                        Deployment::class => __('filament.audit.models.Deployment'),
+                        DeploymentEvent::class => __('filament.audit.models.DeploymentEvent'),
                     ]),
                 SelectFilter::make('action')
                     ->label(__('filament.audit.event'))

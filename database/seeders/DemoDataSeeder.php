@@ -11,6 +11,7 @@ use App\Enums\SupportStatus;
 use App\Enums\VersionStatus;
 use App\Enums\VulnerabilitySeverity;
 use App\Enums\VulnerabilityStatus;
+use App\Models\Environment;
 use App\Models\FileAttachment;
 use App\Models\Software;
 use App\Models\SoftwareDependency;
@@ -34,6 +35,8 @@ class DemoDataSeeder extends Seeder
             'email' => 'owner@example.com',
             'password' => bcrypt('password'),
         ]);
+
+        $this->environments();
 
         $aurora = $this->software($owner, [
             'name' => 'Aurora Suite',
@@ -147,6 +150,25 @@ class DemoDataSeeder extends Seeder
         $this->refreshSoftware($aurora, $owner);
         $this->refreshSoftware($beacon, $owner);
         $this->refreshSoftware($nimbus, $owner);
+    }
+
+    private function environments(): void
+    {
+        foreach ([
+            ['name' => 'Development', 'code' => 'development', 'is_production' => false, 'sort_order' => 10],
+            ['name' => 'Acceptance', 'code' => 'acceptance', 'is_production' => false, 'sort_order' => 20],
+            ['name' => 'Production', 'code' => 'production', 'is_production' => true, 'sort_order' => 30],
+        ] as $environment) {
+            Environment::query()->updateOrCreate(
+                ['code' => $environment['code']],
+                [
+                    'name' => $environment['name'],
+                    'is_production' => $environment['is_production'],
+                    'is_active' => true,
+                    'sort_order' => $environment['sort_order'],
+                ],
+            );
+        }
     }
 
     /**

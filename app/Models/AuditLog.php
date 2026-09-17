@@ -93,6 +93,13 @@ class AuditLog extends Model
         return match (true) {
             $model instanceof Software => $model->name,
             $model instanceof Version => ($model->software?->name ? $model->software->name.' · ' : '').$model->version_number,
+            $model instanceof Environment => $model->name,
+            $model instanceof Deployment => ($model->software?->name ? $model->software->name.' · ' : '')
+                .($model->version?->version_number ? 'v'.$model->version->version_number.' · ' : '')
+                .($model->environment?->name ?? $this->model_label.' #'.$this->model_id),
+            $model instanceof DeploymentEvent => $model->deployment
+                ? $this->model_label.' · #'.$model->deployment_id
+                : $this->model_label.' #'.$this->model_id,
             $model instanceof Vulnerability => $model->cve_id,
             $model instanceof TextContent => $model->title,
             $model instanceof VersionReview => ($model->version?->version_number ? 'v'.$model->version->version_number : $this->model_label.' #'.$this->model_id),

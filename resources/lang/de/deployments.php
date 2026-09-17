@@ -1,0 +1,40 @@
+<?php
+
+return [
+    'status' => [
+        'planned' => 'Geplant',
+        'approved' => 'Freigegeben',
+        'in_progress' => 'In Durchführung',
+        'succeeded' => 'Erfolgreich',
+        'failed' => 'Fehlgeschlagen',
+        'canceled' => 'Abgebrochen',
+        'rolled_back' => 'Zurückgerollt',
+    ],
+    'events' => [
+        'created' => 'Geplant',
+        'updated' => 'Geändert',
+        'approved' => 'Freigegeben',
+        'started' => 'Gestartet',
+        'succeeded' => 'Erfolgreich abgeschlossen',
+        'failed' => 'Fehlgeschlagen',
+        'canceled' => 'Abgebrochen',
+        'rolled_back' => 'Zurückgerollt',
+        'corrected' => 'Korrigiert',
+    ],
+    'errors' => [
+        'only_planned_editable' => 'Nur geplante Deployments können geändert werden.',
+        'reason_required' => 'Eine Begründung ist erforderlich.',
+        'rollback_requires_success' => 'Ein Rollback kann nur für ein erfolgreiches Deployment geplant werden.',
+        'corrections_require_terminal' => 'Korrekturen sind nur für abgeschlossene Deployments möglich.',
+        'correction_fields_required' => 'Mindestens ein zulässiges Korrekturfeld ist erforderlich.',
+        'result_required' => 'Ein Ergebnis ist erforderlich.',
+        'rollback_parent_not_successful' => 'Das ursprüngliche Deployment ist nicht mehr erfolgreich und kann nicht zurückgerollt werden.',
+        'invalid_transition' => 'Der Statusübergang aus „:status“ ist nicht zulässig.',
+        'version_software_mismatch' => 'Die Version gehört nicht zur ausgewählten Software.',
+        'version_not_approved' => 'Die Version muss freigegeben sein.',
+        'production_requires_published' => 'Für Produktionsumgebungen muss die Version zusätzlich veröffentlicht sein.',
+        'environment_inactive' => 'Die ausgewählte Umgebung ist inaktiv.',
+        'active_deployment_exists' => 'Für Software und Umgebung existiert bereits ein aktives Deployment.',
+        'external_reference_conflict' => 'Die externe Referenz gehört bereits zu einem anderen Deployment.',
+    ],
+];

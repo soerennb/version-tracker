@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\AuditLog;
+use App\Models\Deployment;
+use App\Models\Environment;
 use App\Models\FileAttachment;
 use App\Models\ReleaseException;
 use App\Models\Software;
@@ -11,6 +13,8 @@ use App\Models\User;
 use App\Models\Version;
 use App\Models\Vulnerability;
 use App\Policies\AuditLogPolicy;
+use App\Policies\DeploymentPolicy;
+use App\Policies\EnvironmentPolicy;
 use App\Policies\FileAttachmentPolicy;
 use App\Policies\ReleaseExceptionPolicy;
 use App\Policies\SoftwarePolicy;
@@ -34,6 +38,8 @@ class AuthServiceProvider extends ServiceProvider
         FileAttachment::class => FileAttachmentPolicy::class,
         TextContent::class => TextContentPolicy::class,
         AuditLog::class => AuditLogPolicy::class,
+        Deployment::class => DeploymentPolicy::class,
+        Environment::class => EnvironmentPolicy::class,
         Vulnerability::class => VulnerabilityPolicy::class,
         User::class => UserPolicy::class,
         ReleaseException::class => ReleaseExceptionPolicy::class,

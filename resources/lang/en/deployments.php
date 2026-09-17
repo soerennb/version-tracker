@@ -1,0 +1,40 @@
+<?php
+
+return [
+    'status' => [
+        'planned' => 'Planned',
+        'approved' => 'Approved',
+        'in_progress' => 'In progress',
+        'succeeded' => 'Succeeded',
+        'failed' => 'Failed',
+        'canceled' => 'Canceled',
+        'rolled_back' => 'Rolled back',
+    ],
+    'events' => [
+        'created' => 'Planned',
+        'updated' => 'Changed',
+        'approved' => 'Approved',
+        'started' => 'Started',
+        'succeeded' => 'Completed successfully',
+        'failed' => 'Failed',
+        'canceled' => 'Canceled',
+        'rolled_back' => 'Rolled back',
+        'corrected' => 'Corrected',
+    ],
+    'errors' => [
+        'only_planned_editable' => 'Only planned deployments can be changed.',
+        'reason_required' => 'A reason is required.',
+        'rollback_requires_success' => 'A rollback can only be planned for a successful deployment.',
+        'corrections_require_terminal' => 'Corrections are only possible for completed deployments.',
+        'correction_fields_required' => 'At least one allowed correction field is required.',
+        'result_required' => 'A result is required.',
+        'rollback_parent_not_successful' => 'The original deployment is no longer successful and cannot be rolled back.',
+        'invalid_transition' => 'The transition from “:status” is not allowed.',
+        'version_software_mismatch' => 'The version does not belong to the selected software.',
+        'version_not_approved' => 'The version must be approved.',
+        'production_requires_published' => 'Production environments also require a published version.',
+        'environment_inactive' => 'The selected environment is inactive.',
+        'active_deployment_exists' => 'An active deployment already exists for this software and environment.',
+        'external_reference_conflict' => 'The external reference already belongs to another deployment.',
+    ],
+];

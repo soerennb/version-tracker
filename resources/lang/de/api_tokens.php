@@ -63,5 +63,13 @@ return [
         'manage_users' => 'Nutzer verwalten',
         'manage_settings' => 'Einstellungen verwalten',
         'manage_advanced_settings' => 'Erweiterte Einstellungen verwalten',
+        'view_environments' => 'Umgebungen anzeigen',
+        'manage_environments' => 'Umgebungen verwalten',
+        'view_deployments' => 'Deployment-Logbuch anzeigen',
+        'create_deployments' => 'Deployments planen',
+        'approve_deployments' => 'Deployments freigeben',
+        'execute_deployments' => 'Deployments durchführen',
+        'correct_deployments' => 'Deployment-Logbuch korrigieren',
+        'export_deployments' => 'Deployment-Logbuch exportieren',
     ],
 ];

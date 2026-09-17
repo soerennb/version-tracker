@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DeploymentController;
+use App\Http\Controllers\Api\EnvironmentController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\FileAttachmentController;
 use App\Http\Controllers\Api\ImpactAnalysisController;
@@ -69,6 +71,17 @@ Route::middleware(['throttle:api', 'auth:sanctum', EnforceApiTokenPermissions::c
     Route::apiResource('softwares', SoftwareController::class);
     Route::get('softwares/{software}/versions', [SoftwareController::class, 'versions']);
 
+    Route::apiResource('environments', EnvironmentController::class)->only(['index', 'store', 'show', 'update']);
+
+    Route::apiResource('deployments', DeploymentController::class)->only(['index', 'store', 'show', 'update']);
+    Route::post('deployments/{deployment}/approve', [DeploymentController::class, 'approve']);
+    Route::post('deployments/{deployment}/start', [DeploymentController::class, 'start']);
+    Route::post('deployments/{deployment}/succeed', [DeploymentController::class, 'succeed']);
+    Route::post('deployments/{deployment}/fail', [DeploymentController::class, 'fail']);
+    Route::post('deployments/{deployment}/cancel', [DeploymentController::class, 'cancel']);
+    Route::post('deployments/{deployment}/rollback', [DeploymentController::class, 'rollback']);
+    Route::post('deployments/{deployment}/correct', [DeploymentController::class, 'correct']);
+
     Route::apiResource('versions', VersionController::class);
     Route::post('versions/{version}/approve', [VersionController::class, 'approve']);
     Route::post('versions/{version}/publish', [VersionController::class, 'publish']);
@@ -108,6 +121,7 @@ Route::middleware(['throttle:api', 'auth:sanctum', EnforceApiTokenPermissions::c
         Route::get('versions/pdf', [ExportController::class, 'versionsPdf']);
         Route::get('software/csv', [ExportController::class, 'softwareCsv']);
         Route::get('audit-logs/csv', [ExportController::class, 'auditLogsCsv']);
+        Route::get('deployments/csv', [ExportController::class, 'deploymentsCsv']);
         Route::get('versions/{version}/compliance', [ExportController::class, 'compliance']);
     });
 });
