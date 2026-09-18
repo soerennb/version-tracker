@@ -44,5 +44,64 @@ jobs:
         run: |
           npm run build
           php artisan test
+          ./native-install.sh doctor
           composer audit --no-interaction --abandoned=report
           npm audit --omit=dev --audit-level=high
+
+  native-bundle:
+    name: Native release bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          extensions: intl, mbstring, pdo_sqlite, sqlite3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Prepare production runtime assets
+        run: |
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --no-scripts
+          composer dump-autoload --no-dev --classmap-authoritative --no-scripts
+          APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan package:discover --ansi --no-interaction
+          APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan filament:assets --silent --no-interaction
+          npm ci --no-audit --fund=false
+          npm run build
+
+      - name: Build native release archive
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: .github/scripts/build-native-package.sh release-validation
+
+      - name: Validate extracted native release archive
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          archive="versiontracker-native-${VERSION}.tar.gz"
+          smoke_directory="$(mktemp -d)"
+
+          (cd release-validation && sha256sum --check --strict "${archive}.sha256")
+          tar --extract --gzip --file "release-validation/${archive}" --directory "$smoke_directory"
+          cd "$smoke_directory/versiontracker-native-${VERSION}"
+
+          test ! -e .env
+          test ! -e node_modules
+          ./native-install.sh doctor
+          printf '%s\n' 'Native Validation Password 2026!' | ./native-install.sh install \
+            --setup cli \
+            --admin-name 'Native Validation' \
+            --admin-email native-validation@example.invalid \
+            --admin-password-stdin
+          php artisan migrate:status
+          test -L public/storage

@@ -2,21 +2,16 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Prevent accidental demo data and credentials from generic db:seed calls.
      */
     public function run(): void
     {
-        $this->call([
-            DemoUserSeeder::class,
-            DemoDataSeeder::class,
-        ]);
+        throw new RuntimeException('Use php artisan app:install --demo for the explicit demo profile.');
     }
 }

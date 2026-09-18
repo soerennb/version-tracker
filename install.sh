@@ -2,8 +2,16 @@
 
 set -euo pipefail
 
-readonly environment_file=.env.docker
-readonly backup_directory=backups
+script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+readonly script_directory
+readonly default_environment_file="${script_directory}/.env.docker"
+readonly default_backup_directory="${script_directory}/backups"
+
+environment_file="$default_environment_file"
+backup_directory="$default_backup_directory"
+instance_directory=''
+instance_name=''
+base_directory="${VERSIONTRACKER_BASE_DIR:-${script_directory}/instances}"
 
 install_version=''
 install_mode=''
@@ -16,6 +24,29 @@ install_trusted_proxies=''
 install_admin_name=''
 install_admin_email=''
 install_admin_password_stdin=false
+install_setup_mode=''
+install_demo=false
+assume_yes=false
+update_version=''
+
+set_instance_paths() {
+    if [[ -z "$instance_name" ]]; then
+        return
+    fi
+
+    if ! [[ "$instance_name" =~ ^[a-z0-9][a-z0-9_-]{0,31}$ ]]; then
+        echo 'Instance names must start with a lowercase letter or digit and contain only lowercase letters, digits, hyphens, and underscores.' >&2
+        exit 1
+    fi
+
+    if [[ "$base_directory" != /* ]]; then
+        base_directory="$(pwd)/${base_directory}"
+    fi
+
+    instance_directory="${base_directory}/${instance_name}"
+    environment_file="${instance_directory}/.env.docker"
+    backup_directory="${instance_directory}/backups"
+}
 
 set_environment_value() {
     local key="$1"
@@ -32,48 +63,69 @@ set_environment_value() {
 }
 
 environment_value() {
-    grep "^${1}=" "$environment_file" | cut -d= -f2-
+    grep -m1 "^${1}=" "$environment_file" | cut -d= -f2- || true
 }
 
 compose_file_for_mode() {
     case "$1" in
         proxy)
-            printf '%s\n' compose.proxy.yml
+            printf '%s\n' "${script_directory}/compose.proxy.yml"
             ;;
         caddy)
-            printf '%s\n' compose.caddy.yml
+            printf '%s\n' "${script_directory}/compose.caddy.yml"
             ;;
         *)
-            echo "DEPLOYMENT_MODE must be either proxy or caddy." >&2
+            echo 'DEPLOYMENT_MODE must be either proxy or caddy.' >&2
             exit 1
             ;;
     esac
 }
 
 configured_project_name() {
+    if [[ -n "$instance_name" ]]; then
+        if [[ -f "$environment_file" ]]; then
+            local instance_project_name
+            instance_project_name="$(environment_value COMPOSE_PROJECT_NAME)"
+
+            if [[ -n "$instance_project_name" && "$instance_project_name" != versiontracker ]]; then
+                printf '%s\n' "$instance_project_name"
+
+                return
+            fi
+        fi
+
+        printf 'versiontracker-%s\n' "$instance_name"
+
+        return
+    fi
+
     if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
         printf '%s\n' "$COMPOSE_PROJECT_NAME"
 
         return
     fi
 
-    if [[ -f "$environment_file" ]] && grep -q '^COMPOSE_PROJECT_NAME=' "$environment_file"; then
+    if [[ -f "$environment_file" ]]; then
         local project_name
-        project_name="$(environment_value COMPOSE_PROJECT_NAME || true)"
+        project_name="$(environment_value COMPOSE_PROJECT_NAME)"
 
         if [[ -n "$project_name" ]]; then
             printf '%s\n' "$project_name"
 
             return
         fi
-
     fi
 
     printf '%s\n' versiontracker
 }
 
 compose() {
-    docker compose --project-name "$(configured_project_name)" --env-file "$environment_file" -f compose.yml -f "$1" "${@:2}"
+    VERSIONTRACKER_ENV_FILE="$environment_file" docker compose \
+        --project-name "$(configured_project_name)" \
+        --env-file "$environment_file" \
+        -f "${script_directory}/compose.yml" \
+        -f "$1" \
+        "${@:2}"
 }
 
 require_command() {
@@ -101,20 +153,51 @@ is_valid_http_url() {
 usage() {
     cat <<'EOF'
 Usage:
-  ./install.sh install [--version v0.x.y] [--mode proxy|caddy] [--port PORT]
+  ./install.sh install [--instance NAME] [--base-dir PATH]
+                       [--version v0.x.y] [--mode proxy|caddy] [--port PORT]
                        [--url URL] [--trusted-hosts HOSTS] [--trusted-proxies PROXIES]
-                       [--domain DOMAIN --email EMAIL]
+                       [--domain DOMAIN --email EMAIL] [--setup web|cli] [--demo]
                        [--admin-name NAME --admin-email EMAIL --admin-password-stdin]
-  ./install.sh update
-  ./install.sh status
-  ./install.sh backup
+  ./install.sh update [--instance NAME] [--base-dir PATH] [--version v0.x.y] [--yes]
+  ./install.sh status [--instance NAME] [--base-dir PATH]
+  ./install.sh backup [--instance NAME] [--base-dir PATH]
+  ./install.sh doctor [--instance NAME] [--base-dir PATH]
+  ./install.sh list [--base-dir PATH]
 
-When all install options are supplied, pipe the administrator password to standard input.
+Named instances use <base-dir>/<name>/.env.docker and isolated Compose volumes.
+Without --instance, the legacy .env.docker and backups/ paths remain active.
 EOF
+}
+
+parse_common_option() {
+    common_option_consumed=0
+
+    case "$1" in
+        --instance)
+            require_option_value "$1" "${2:-}"
+            instance_name="$2"
+            common_option_consumed=2
+            ;;
+        --base-dir)
+            require_option_value "$1" "${2:-}"
+            base_directory="$2"
+            common_option_consumed=2
+            ;;
+        --yes)
+            assume_yes=true
+            common_option_consumed=1
+            ;;
+    esac
 }
 
 parse_install_options() {
     while [[ $# -gt 0 ]]; do
+        parse_common_option "$@"
+        if (( common_option_consumed > 0 )); then
+            shift "$common_option_consumed"
+            continue
+        fi
+
         case "$1" in
             --version)
                 require_option_value "$1" "${2:-}"
@@ -170,6 +253,15 @@ parse_install_options() {
                 install_admin_password_stdin=true
                 shift
                 ;;
+            --setup)
+                require_option_value "$1" "${2:-}"
+                install_setup_mode="$2"
+                shift 2
+                ;;
+            --demo)
+                install_demo=true
+                shift
+                ;;
             --help|-h)
                 usage
                 exit 0
@@ -187,6 +279,11 @@ parse_install_options() {
         exit 1
     fi
 
+    if [[ -n "$install_setup_mode" && "$install_setup_mode" != web && "$install_setup_mode" != cli ]]; then
+        echo 'Setup mode must be either web or cli.' >&2
+        exit 1
+    fi
+
     if [[ -n "$install_domain$install_email" && "$install_mode" != caddy ]]; then
         echo 'Domain and ACME email require Caddy mode.' >&2
         exit 1
@@ -201,6 +298,60 @@ parse_install_options() {
         echo 'Administrator name and email are required with --admin-password-stdin.' >&2
         exit 1
     fi
+
+    if [[ "$install_demo" == true && "$install_setup_mode" == web ]]; then
+        echo '--demo requires CLI setup.' >&2
+        exit 1
+    fi
+}
+
+parse_update_options() {
+    while [[ $# -gt 0 ]]; do
+        parse_common_option "$@"
+        if (( common_option_consumed > 0 )); then
+            shift "$common_option_consumed"
+            continue
+        fi
+
+        case "$1" in
+            --version)
+                require_option_value "$1" "${2:-}"
+                update_version="$2"
+                shift 2
+                ;;
+            --help|-h)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown update option: $1" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+    done
+}
+
+parse_selector_options() {
+    while [[ $# -gt 0 ]]; do
+        parse_common_option "$@"
+        if (( common_option_consumed > 0 )); then
+            shift "$common_option_consumed"
+            continue
+        fi
+
+        case "$1" in
+            --help|-h)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+    done
 }
 
 check_port() {
@@ -223,15 +374,46 @@ preflight() {
     docker info >/dev/null
 }
 
-configure_installation() {
+prepare_environment_file() {
+    if [[ -n "$instance_name" ]]; then
+        mkdir -p "$instance_directory" "$backup_directory"
+        chmod 700 "$instance_directory" "$backup_directory"
+    fi
+
     if [[ ! -f "$environment_file" ]]; then
-        cp .env.docker.example "$environment_file"
+        cp "${script_directory}/.env.docker.example" "$environment_file"
+        chmod 600 "$environment_file"
         set_environment_value APP_KEY "base64:$(openssl rand -base64 32)"
         set_environment_value DB_PASSWORD "$(openssl rand -base64 24 | tr -d '\n')"
         set_environment_value DB_ROOT_PASSWORD "$(openssl rand -base64 24 | tr -d '\n')"
     fi
 
     chmod 600 "$environment_file"
+    set_environment_value VERSIONTRACKER_ENV_FILE "$environment_file"
+
+    if [[ -n "$instance_name" ]]; then
+        local project_name
+        local database_suffix
+        project_name="$(environment_value COMPOSE_PROJECT_NAME)"
+        database_suffix="${instance_name//-/_}"
+        if [[ -z "$project_name" || "$project_name" == versiontracker ]]; then
+            set_environment_value COMPOSE_PROJECT_NAME "versiontracker-${instance_name}"
+        fi
+        if (( ${#database_suffix} <= 18 )); then
+            if [[ "$(environment_value DB_DATABASE)" == versiontracker ]]; then
+                set_environment_value DB_DATABASE "versiontracker_${database_suffix}"
+            fi
+            if [[ "$(environment_value DB_USERNAME)" == versiontracker ]]; then
+                set_environment_value DB_USERNAME "versiontracker_${database_suffix}"
+            fi
+        fi
+        set_environment_value SESSION_COOKIE "versiontracker-${instance_name}-session"
+        set_environment_value CACHE_PREFIX "versiontracker-${instance_name}"
+    fi
+}
+
+configure_installation() {
+    prepare_environment_file
 
     local version="$install_version"
     local mode="$install_mode"
@@ -263,6 +445,16 @@ configure_installation() {
             ;;
     esac
 
+    if [[ "$install_demo" == true ]]; then
+        install_setup_mode=cli
+    elif [[ -z "$install_setup_mode" ]]; then
+        if [[ "$install_admin_password_stdin" == true ]]; then
+            install_setup_mode=cli
+        else
+            install_setup_mode=web
+        fi
+    fi
+
     if [[ "$mode" == caddy ]]; then
         local domain="$install_domain"
         local email="$install_email"
@@ -284,6 +476,11 @@ configure_installation() {
         [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'The Caddy domain must contain only letters, numbers, dots, and hyphens.' >&2; exit 1; }
         [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]] || { echo 'The ACME email address is invalid.' >&2; exit 1; }
 
+        if [[ -n "$instance_name" ]]; then
+            echo 'Caddy mode is limited to one host-wide installation; use proxy mode for named instances.' >&2
+            exit 1
+        fi
+
         check_port 80
         check_port 443
         set_environment_value DEPLOYMENT_MODE caddy
@@ -292,40 +489,39 @@ configure_installation() {
         set_environment_value APP_URL "https://${domain}"
         set_environment_value TRUSTED_HOSTS "$domain"
         set_environment_value TRUSTED_PROXIES '*'
-        compose_file_for_mode caddy
+    else
+        local port="$install_port"
 
-        return
+        if [[ -z "$port" ]]; then
+            read -r -p 'Application port [8080]: ' port
+        fi
+
+        port="${port:-8080}"
+        if ! [[ "$port" =~ ^[0-9]+$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); then
+            echo 'Application port must be between 1 and 65535.' >&2
+            exit 1
+        fi
+        if [[ -n "$install_url" ]] && ! is_valid_http_url "$install_url"; then
+            echo 'The application URL must be an absolute http:// or https:// URL without whitespace.' >&2
+            exit 1
+        fi
+        check_port "$port"
+        set_environment_value DEPLOYMENT_MODE proxy
+        set_environment_value APP_PORT "$port"
+        set_environment_value APP_URL "${install_url:-http://localhost:${port}}"
+
+        if [[ -n "$install_trusted_hosts" ]]; then
+            set_environment_value TRUSTED_HOSTS "$install_trusted_hosts"
+        fi
+
+        if [[ -n "$install_trusted_proxies" ]]; then
+            set_environment_value TRUSTED_PROXIES "$install_trusted_proxies"
+        fi
     fi
 
-    local port="$install_port"
-
-    if [[ -z "$port" ]]; then
-        read -r -p 'Application port [8080]: ' port
+    if [[ "$install_setup_mode" == web && -z "$(environment_value INSTALLER_SETUP_TOKEN)" ]]; then
+        set_environment_value INSTALLER_SETUP_TOKEN "$(openssl rand -hex 24)"
     fi
-
-    port="${port:-8080}"
-    if ! [[ "$port" =~ ^[0-9]+$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); then
-        echo 'Application port must be between 1 and 65535.' >&2
-        exit 1
-    fi
-    if [[ -n "$install_url" ]] && ! is_valid_http_url "$install_url"; then
-        echo 'The application URL must be an absolute http:// or https:// URL without whitespace.' >&2
-        exit 1
-    fi
-    check_port "$port"
-    set_environment_value DEPLOYMENT_MODE proxy
-    set_environment_value APP_PORT "$port"
-    set_environment_value APP_URL "${install_url:-http://localhost:${port}}"
-
-    if [[ -n "$install_trusted_hosts" ]]; then
-        set_environment_value TRUSTED_HOSTS "$install_trusted_hosts"
-    fi
-
-    if [[ -n "$install_trusted_proxies" ]]; then
-        set_environment_value TRUSTED_PROXIES "$install_trusted_proxies"
-    fi
-
-    compose_file_for_mode proxy
 }
 
 validate_environment() {
@@ -333,7 +529,7 @@ validate_environment() {
     local value
 
     for key in VERSION APP_KEY DB_DATABASE DB_USERNAME DB_PASSWORD DB_ROOT_PASSWORD DEPLOYMENT_MODE; do
-        value="$(environment_value "$key" || true)"
+        value="$(environment_value "$key")"
 
         if [[ -z "$value" ]]; then
             echo "${key} must be set in ${environment_file}." >&2
@@ -354,26 +550,36 @@ validate_environment() {
 initialize_application() {
     local compose_file="$1"
 
-    if [[ "$install_admin_password_stdin" == true ]]; then
-        compose "$compose_file" run --rm -T app php artisan app:install \
-            --no-demo \
-            --admin-name="$install_admin_name" \
-            --admin-email="$install_admin_email" \
-            --admin-password-stdin
+    if [[ "$install_demo" == true ]]; then
+        compose "$compose_file" run --rm app php artisan app:install --demo
 
         return
     fi
 
-    compose "$compose_file" run --rm app php artisan app:install
+    if [[ "$install_setup_mode" == cli ]]; then
+        if [[ "$install_admin_password_stdin" == true ]]; then
+            compose "$compose_file" run --rm -T app php artisan app:install \
+                --no-demo \
+                --admin-name="$install_admin_name" \
+                --admin-email="$install_admin_email" \
+                --admin-password-stdin
+        else
+            compose "$compose_file" run --rm app php artisan app:install --no-demo
+        fi
+
+        return
+    fi
+
+    compose "$compose_file" run --rm app php artisan migrate --force
+    compose "$compose_file" run --rm app php artisan storage:link --force
+    compose "$compose_file" run --rm app php artisan optimize
 }
 
 configured_compose_file() {
-    [[ -f "$environment_file" ]] || { echo 'Run ./install.sh install first.' >&2; exit 1; }
+    [[ -f "$environment_file" ]] || { echo "Run ./install.sh install first for ${instance_name:-the default instance}." >&2; exit 1; }
     validate_environment
 
-    local mode
-    mode="$(environment_value DEPLOYMENT_MODE)"
-    compose_file_for_mode "$mode"
+    compose_file_for_mode "$(environment_value DEPLOYMENT_MODE)"
 }
 
 wait_for_health() {
@@ -417,10 +623,11 @@ wait_for_runtime_services() {
 install() {
     preflight
 
-    local compose_file
-    compose_file="$(configure_installation)"
+    configure_installation
     validate_environment
 
+    local compose_file
+    compose_file="$(compose_file_for_mode "$(environment_value DEPLOYMENT_MODE)")"
     compose "$compose_file" config >/dev/null
     compose "$compose_file" pull
     compose "$compose_file" up -d db
@@ -429,6 +636,11 @@ install() {
     wait_for_health "$compose_file"
     wait_for_runtime_services "$compose_file"
     compose "$compose_file" ps
+
+    if [[ "$install_setup_mode" == web && "$install_demo" == false ]]; then
+        echo "Open $(environment_value APP_URL)/install and enter this one-time setup token:"
+        environment_value INSTALLER_SETUP_TOKEN
+    fi
 }
 
 update() {
@@ -436,11 +648,17 @@ update() {
 
     local compose_file
     local current_version
-    local version
     compose_file="$(configured_compose_file)"
     current_version="$(environment_value VERSION)"
 
-    read -r -p 'New release image version: ' version
+    local version="$update_version"
+    if [[ -z "$version" && "$assume_yes" == true ]]; then
+        echo '--yes requires --version for a non-interactive update.' >&2
+        exit 1
+    fi
+    if [[ -z "$version" ]]; then
+        read -r -p 'New release image version: ' version
+    fi
     is_valid_version "$version" || {
         echo 'Enter a concrete v0.x.y release tag.' >&2
         exit 1
@@ -504,7 +722,12 @@ backup() {
     local target_directory
     compose_file="$(configured_compose_file)"
     timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-    target_directory="${backup_directory}/versiontracker-${timestamp}"
+
+    if [[ -n "$instance_name" ]]; then
+        target_directory="${backup_directory}/versiontracker-${instance_name}-${timestamp}"
+    else
+        target_directory="${backup_directory}/versiontracker-${timestamp}"
+    fi
 
     umask 077
     mkdir -p "$target_directory"
@@ -517,6 +740,7 @@ backup() {
         printf 'version=%s\n' "$(environment_value VERSION)"
         printf 'deployment_mode=%s\n' "$(environment_value DEPLOYMENT_MODE)"
         printf 'project_name=%s\n' "$(configured_project_name)"
+        printf 'instance=%s\n' "${instance_name:-default}"
     } > "$target_directory/manifest"
     chmod 600 "$target_directory/manifest"
     sha256sum "$target_directory/database.sql" "$target_directory/storage.tar.gz" "$target_directory/environment.backup" > "$target_directory/checksums.sha256"
@@ -524,20 +748,82 @@ backup() {
     printf '%s\n' "$target_directory"
 }
 
+doctor() {
+    require_command docker
+    require_command openssl
+    require_command grep
+    require_command sed
+    require_command tar
+    require_command sha256sum
+    docker compose version >/dev/null
+
+    if [[ ! -f "$environment_file" ]]; then
+        echo "Environment file is missing: ${environment_file}" >&2
+        exit 1
+    fi
+
+    local compose_file
+    compose_file="$(configured_compose_file)"
+    compose "$compose_file" config --quiet
+    printf 'Instance: %s\n' "${instance_name:-default}"
+    printf 'Environment: %s\n' "$environment_file"
+    printf 'Project: %s\n' "$(configured_project_name)"
+    printf 'Compose: %s\n' "$compose_file"
+    printf 'Version: %s\n' "$(environment_value VERSION)"
+    printf 'URL: %s\n' "$(environment_value APP_URL)"
+    echo 'Compose configuration is valid.'
+}
+
+list_instances() {
+    printf 'default\t%s\n' "$default_environment_file"
+
+    if [[ ! -d "$base_directory" ]]; then
+        return
+    fi
+
+    find "$base_directory" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null \
+        | while IFS= read -r -d '' directory; do
+            local name
+            name="$(basename "$directory")"
+            printf '%s\t%s\n' "$name" "${directory}/.env.docker"
+        done
+}
+
 case "${1:-}" in
     install)
         shift
         parse_install_options "$@"
+        set_instance_paths
         install
         ;;
     update)
+        shift
+        parse_update_options "$@"
+        set_instance_paths
         update
         ;;
     status)
+        shift
+        parse_selector_options "$@"
+        set_instance_paths
         status
         ;;
     backup)
+        shift
+        parse_selector_options "$@"
+        set_instance_paths
         backup
+        ;;
+    doctor)
+        shift
+        parse_selector_options "$@"
+        set_instance_paths
+        doctor
+        ;;
+    list)
+        shift
+        parse_selector_options "$@"
+        list_instances
         ;;
     *)
         usage >&2

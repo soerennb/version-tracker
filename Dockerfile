@@ -19,7 +19,13 @@ RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --opt
 
 COPY . .
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && composer dump-autoload --no-dev --classmap-authoritative
+    && composer dump-autoload --no-dev --classmap-authoritative --no-scripts \
+    && APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan package:discover --ansi --no-interaction \
+    && APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan filament:assets --silent --no-interaction \
+    && test -s bootstrap/cache/packages.php \
+    && test -s bootstrap/cache/services.php \
+    && test -s public/css/filament/filament/app.css \
+    && test -s public/js/filament/filament/app.js
 
 FROM node:26-bookworm-slim@sha256:c8fedd782bcd1b68d8a7d1ed2577b5f820eba820871323f605292651ff11e3c6 AS frontend
 
@@ -58,5 +64,7 @@ RUN docker-php-ext-enable gd intl pdo_mysql zip \
     && find /var/www/html -type f -exec chmod 644 {} + \
     && chmod 755 /var/www/html \
     && chown -R www-data:www-data storage bootstrap/cache
+
+RUN test -s /var/www/html/public/build/manifest.json
 
 EXPOSE 80

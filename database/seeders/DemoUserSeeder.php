@@ -5,19 +5,20 @@ namespace Database\Seeders;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DemoUserSeeder extends Seeder
 {
     /**
-     * Create a predictable demo user for local development.
+     * Create the demo user for local development.
      */
-    public function run(): void
+    public function run(?string $password = null): User
     {
-        User::updateOrCreate(
+        return User::updateOrCreate(
             ['email' => 'demo@example.com'],
             [
                 'name' => 'Demo Admin',
-                'password' => bcrypt('password'),
+                'password' => Hash::make($password ?? bin2hex(random_bytes(18))),
                 'role' => UserRole::ADMIN,
                 'email_verified_at' => now(),
             ]

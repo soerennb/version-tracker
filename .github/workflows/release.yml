@@ -6,8 +6,7 @@ on:
       - "v0.*.*"
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,11 +16,15 @@ jobs:
   validate:
     name: Release-ready validation
     uses: ./.github/workflows/release-validation.yml
+    permissions:
+      contents: read
 
-  publish:
-    name: Publish container and release notes
+  build-artifacts:
+    name: Build and validate release archives
     runs-on: ubuntu-latest
     needs: validate
+    permissions:
+      contents: read
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v7
@@ -32,6 +35,160 @@ jobs:
         run: |
           git fetch origin master:refs/remotes/origin/master
           git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+
+      - name: Set up PHP for native bundle
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          extensions: intl, mbstring, pdo_sqlite, sqlite3
+
+      - name: Set up Node.js for native bundle
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Prepare production runtime assets
+        run: |
+          composer install --no-dev --no-interaction --no-progress --prefer-dist --no-scripts
+          composer dump-autoload --no-dev --classmap-authoritative --no-scripts
+          APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan package:discover --ansi --no-interaction
+          APP_ENV=production APP_DEBUG=false APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= php artisan filament:assets --silent --no-interaction
+          npm ci --no-audit --fund=false
+          npm run build
+
+      - name: Build native release archive
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: .github/scripts/build-native-package.sh release
+
+      - name: Smoke-test native release archive
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          archive="versiontracker-native-${VERSION}.tar.gz"
+          checksum="${archive}.sha256"
+          smoke_directory="$(mktemp -d)"
+          demo_directory="$(mktemp -d)"
+
+          (cd release && sha256sum --check --strict "$checksum")
+          tar --extract --gzip --file "release/${archive}" --directory "$smoke_directory"
+          cd "$smoke_directory/versiontracker-native-${VERSION}"
+
+          ./native-install.sh doctor
+          printf '%s\n' 'Native Release Test Password 2026!' | ./native-install.sh install \
+            --setup cli \
+            --admin-name 'Native Release Test' \
+            --admin-email native-release-test@example.invalid \
+            --admin-password-stdin
+          php artisan migrate:status
+          test -L public/storage
+
+          php artisan serve --host=127.0.0.1 --port=18082 >"$smoke_directory/server.log" 2>&1 &
+          server_pid=$!
+
+          cleanup_server() {
+              kill "$server_pid" >/dev/null 2>&1 || true
+              wait "$server_pid" >/dev/null 2>&1 || true
+          }
+
+          trap cleanup_server EXIT
+
+          healthy=false
+          for _ in {1..30}; do
+              if curl --fail --silent http://127.0.0.1:18082/up >/dev/null; then
+                  healthy=true
+                  break
+              fi
+
+              sleep 2
+          done
+
+          if [[ "$healthy" != true ]]; then
+              cat "$smoke_directory/server.log"
+              exit 1
+          fi
+
+          curl --fail --silent http://127.0.0.1:18082/ >/dev/null
+          curl --fail --silent http://127.0.0.1:18082/admin/login >/dev/null
+          curl --fail --silent http://127.0.0.1:18082/css/filament/filament/app.css >/dev/null
+          curl --fail --silent http://127.0.0.1:18082/js/filament/filament/app.js >/dev/null
+
+          cleanup_server
+          trap - EXIT
+
+          tar --extract --gzip --file "${GITHUB_WORKSPACE}/release/${archive}" --directory "$demo_directory"
+          cd "$demo_directory/versiontracker-native-${VERSION}"
+          demo_output="$(./native-install.sh install --demo)"
+          printf '%s\n' "$demo_output" | grep --fixed-strings --quiet 'demo@example.com'
+          printf '%s\n' "$demo_output" | grep --extended-regexp --quiet 'Password: [[:xdigit:]]{36}$'
+
+      - name: Build Docker deployment archive
+        env:
+          VERSION: ${{ github.ref_name }}
+          IMAGE: ghcr.io/${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          deployment_name="versiontracker-deploy-${VERSION}"
+          deployment_directory="release/${deployment_name}"
+          source_date_epoch="$(git log -1 --format=%ct "$GITHUB_SHA")"
+
+          mkdir -p "${deployment_directory}/docs"
+          cp -a install.sh compose.yml compose.proxy.yml compose.caddy.yml Caddyfile .env.docker.example README.md LICENSE "${deployment_directory}/"
+          cp -a docs/self-hosting.md docs/releasing.md "${deployment_directory}/docs/"
+          cat > "${deployment_directory}/release-manifest.json" <<EOF
+          {
+              "artifact": "${deployment_name}",
+              "version": "${VERSION}",
+              "commit": "${GITHUB_SHA}",
+              "source_date_epoch": ${source_date_epoch},
+              "image_repository": "${IMAGE}"
+          }
+          EOF
+
+          tar \
+              --create \
+              --use-compress-program='gzip -n' \
+              --file "release/${deployment_name}.tar.gz" \
+              --sort=name \
+              --mtime="@${source_date_epoch}" \
+              --owner=0 \
+              --group=0 \
+              --numeric-owner \
+              --directory release \
+              "$deployment_name"
+
+          (cd release && sha256sum "${deployment_name}.tar.gz" > "${deployment_name}.tar.gz.sha256")
+          deployment_smoke_directory="$(mktemp -d)"
+          tar --extract --gzip --file "release/${deployment_name}.tar.gz" --directory "$deployment_smoke_directory"
+          test -s "${deployment_smoke_directory}/${deployment_name}/release-manifest.json"
+
+      - name: Upload release archives
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-archives-${{ github.ref_name }}
+          path: |
+            release/*.tar.gz
+            release/*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-image:
+    name: Publish and validate Docker image
+    runs-on: ubuntu-latest
+    needs: build-artifacts
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
 
       - name: Log in to GitHub Container Registry
         env:
@@ -67,30 +224,11 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - name: Smoke test published image
+      - name: Smoke-test published image
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           DIGEST: ${{ steps.image.outputs.digest }}
-        run: |
-          docker pull "$IMAGE@$DIGEST"
-          docker run --detach --rm --name versiontracker --publish 8080:80 \
-            --env APP_ENV=production \
-            --env APP_DEBUG=false \
-            --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
-            "$IMAGE@$DIGEST"
-
-          trap 'docker rm --force versiontracker >/dev/null 2>&1 || true' EXIT
-
-          for _ in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8080/up; then
-              exit 0
-            fi
-
-            sleep 2
-          done
-
-          docker logs versiontracker
-          exit 1
+        run: .github/scripts/smoke-published-image.sh
 
       - name: Scan published image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
@@ -102,52 +240,72 @@ jobs:
           severity: CRITICAL,HIGH
           vuln-type: os,library
 
-      - name: Validate published installer path
+  publish-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - build-artifacts
+      - publish-image
+    permissions:
+      contents: write
+    steps:
+      - name: Download release archives
+        uses: actions/download-artifact@v8
+        with:
+          name: release-archives-${{ github.ref_name }}
+          path: release
+
+      - name: Create release manifest and notes
         env:
           VERSION: ${{ github.ref_name }}
-          COMPOSE_PROJECT_NAME: versiontracker-release-install
+          IMAGE: ghcr.io/${{ github.repository }}
+          DIGEST: ${{ needs.publish-image.outputs.digest }}
         run: |
-          test -x install.sh
-          printf '%s\n' 'Release Test Password 2026' | ./install.sh install \
-            --version "$VERSION" \
-            --mode proxy \
-            --port 18080 \
-            --admin-name 'Release Test' \
-            --admin-email release-test@example.invalid \
-            --admin-password-stdin
-          ./install.sh status
-          backup_directory="$(./install.sh backup)"
-          test -s "$backup_directory/database.sql"
-          test -s "$backup_directory/storage.tar.gz"
-          test -s "$backup_directory/manifest"
-          test -s "$backup_directory/checksums.sha256"
-          sha256sum --check --strict "$backup_directory/checksums.sha256"
+          set -euo pipefail
 
-      - name: Build deployment bundle
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          bundle="versiontracker-deploy-${VERSION}.tar.gz"
-          tar --create --gzip --file "$bundle" \
-            --transform "s,^,versiontracker-deploy-${VERSION}/," \
-            install.sh compose.yml compose.proxy.yml compose.caddy.yml Caddyfile .env.docker.example docs/self-hosting.md
-          sha256sum "$bundle" > "${bundle}.sha256"
+          native_archive="versiontracker-native-${VERSION}.tar.gz"
+          deployment_archive="versiontracker-deploy-${VERSION}.tar.gz"
+          native_sha256="$(awk '{print $1}' "release/${native_archive}.sha256")"
+          deployment_sha256="$(awk '{print $1}' "release/${deployment_archive}.sha256")"
 
-      - name: Clean up release installation test
-        if: always()
-        env:
-          COMPOSE_PROJECT_NAME: versiontracker-release-install
-        run: docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml down --volumes --remove-orphans
+          cat > release/release-manifest.json <<EOF
+          {
+              "version": "${VERSION}",
+              "commit": "${GITHUB_SHA}",
+              "image": "${IMAGE}",
+              "image_digest": "${DIGEST}",
+              "native_archive_sha256": "${native_sha256}",
+              "deployment_archive_sha256": "${deployment_sha256}"
+          }
+          EOF
+
+          cat > release/release-notes.md <<EOF
+          ### Container image
+
+          Image: ${IMAGE}@${DIGEST}
+
+          The image is published for linux/amd64 and linux/arm64 with provenance and an SBOM. The Compose deployment runs the web application, MariaDB, queue worker, and scheduler.
+
+          ### Installation archives
+
+          Download and verify the versiontracker-native archive for a Dockerless installation or the versiontracker-deploy archive for the Docker Compose installer. The release manifest contains the image and archive hashes.
+
+          ### Upgrade notes
+
+          See the self-hosting guide for backup, migration, and rollback instructions.
+          EOF
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE: ghcr.io/${{ github.repository }}
-          DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
             --generate-notes \
             --title "$GITHUB_REF_NAME" \
-            --notes $'### Container image\n\n`'"$IMAGE@$DIGEST"$'\n\n### Deployment bundle\n\nDownload the `versiontracker-deploy-` archive and verify its SHA-256 checksum before installation.\n\n### Upgrade notes\n\nSee the self-hosting guide for backup, update, and rollback instructions.' \
-            "versiontracker-deploy-${GITHUB_REF_NAME}.tar.gz" \
-            "versiontracker-deploy-${GITHUB_REF_NAME}.tar.gz.sha256"
+            --notes-file release/release-notes.md \
+            "release/versiontracker-deploy-${GITHUB_REF_NAME}.tar.gz" \
+            "release/versiontracker-deploy-${GITHUB_REF_NAME}.tar.gz.sha256" \
+            "release/versiontracker-native-${GITHUB_REF_NAME}.tar.gz" \
+            "release/versiontracker-native-${GITHUB_REF_NAME}.tar.gz.sha256" \
+            release/release-manifest.json

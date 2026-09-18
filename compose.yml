@@ -3,7 +3,7 @@ name: ${COMPOSE_PROJECT_NAME:-versiontracker}
 x-runtime: &runtime
   image: ${IMAGE_REPOSITORY:-ghcr.io/soerennb/version-tracker}:${VERSION:?Set VERSION to a concrete v0.x.y release tag}
   env_file:
-    - .env.docker
+    - ${VERSIONTRACKER_ENV_FILE:-.env.docker}
   environment:
     DB_ROOT_PASSWORD: ""
   depends_on:

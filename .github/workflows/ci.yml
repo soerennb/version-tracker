@@ -226,6 +226,11 @@ jobs:
         run: |
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach db
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app php artisan migrate --force
+          printf '%s\n' 'Container CI Password 2026!' | docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm --no-deps -T app php artisan app:install \
+            --no-demo \
+            --admin-name='Container CI Administrator' \
+            --admin-email=container-ci@example.invalid \
+            --admin-password-stdin
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app worker scheduler
 
           healthy=false
@@ -243,11 +248,21 @@ jobs:
             exit 1
           fi
 
+          curl --fail --silent http://127.0.0.1:8080/ >/dev/null
+          curl --fail --silent http://127.0.0.1:8080/admin/login >/dev/null
+          curl --fail --silent http://127.0.0.1:8080/css/filament/filament/app.css >/dev/null
+          curl --fail --silent http://127.0.0.1:8080/js/filament/filament/app.js >/dev/null
+
           for service in worker scheduler; do
             docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml ps --status running --services | grep --fixed-strings --line-regexp "$service"
           done
 
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app php -r "exit(ini_get('upload_max_filesize') === '32M' && ini_get('post_max_size') === '32M' && ini_get('memory_limit') === '256M' ? 0 : 1);"
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -s /var/www/html/bootstrap/cache/packages.php
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -s /var/www/html/bootstrap/cache/services.php
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -s /var/www/html/public/build/manifest.json
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -s /var/www/html/public/css/filament/filament/app.css
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -s /var/www/html/public/js/filament/filament/app.js
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -L /var/www/html/public/storage
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app apachectl -t
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app sh -c 'test "$(stat --format=%a /var/www/html)" = 755'
@@ -340,8 +355,17 @@ jobs:
       - name: Lint installer
         run: |
           test -x install.sh
+          test -x native-install.sh
+          test -x .github/scripts/build-native-package.sh
+          test -x .github/scripts/smoke-published-image.sh
           bash -n install.sh
+          bash -n native-install.sh
+          bash -n .github/scripts/build-native-package.sh
+          bash -n .github/scripts/smoke-published-image.sh
           shellcheck install.sh
+          shellcheck native-install.sh
+          shellcheck .github/scripts/build-native-package.sh
+          shellcheck .github/scripts/smoke-published-image.sh
 
   gate:
     name: CI gate

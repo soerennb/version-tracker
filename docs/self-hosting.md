@@ -1,6 +1,6 @@
 # Self-hosting
 
-VersionTracker is distributed as a versioned Docker image and a compact deployment bundle. Install a concrete GitHub release tag such as `v0.1.2`; do not substitute `latest` in a production deployment.
+VersionTracker is distributed as a versioned Docker image, a Docker deployment bundle, and a prepared native bundle. Install a concrete GitHub release tag such as `v0.1.2`; do not substitute `latest` in a production deployment.
 
 ## Prerequisites
 
@@ -21,7 +21,9 @@ cd "versiontracker-deploy-${VERSION}"
 ./install.sh install
 ```
 
-The installer verifies Docker, generates `.env.docker` with mode `0600`, creates database secrets, records the selected deployment mode, starts MariaDB, and creates the initial administrator. The generated configuration uses the stable Compose project name `versiontracker`; this keeps named volumes (`versiontracker_db_data`, `versiontracker_app_storage`, and, in Caddy mode, the Caddy volumes) independent of the directory name. Change `COMPOSE_PROJECT_NAME` only when deliberately migrating or isolating a deployment. Demo data requires a second confirmation because it includes a public password.
+The installer verifies Docker, generates `.env.docker` with mode `0600`, creates database secrets, records the selected deployment mode, starts MariaDB, and prepares the initial database. The generated configuration uses the stable Compose project name `versiontracker`; this keeps named volumes (`versiontracker_db_data`, `versiontracker_app_storage`, and, in Caddy mode, the Caddy volumes) independent of the directory name. Change `COMPOSE_PROJECT_NAME` only when deliberately migrating or isolating a deployment.
+
+Interactive installations use the one-time web setup by default. After the health check, open the printed `/install` URL and enter the printed token. The page creates the first administrator and is disabled after completion. It never changes host-level environment files. Use `--setup cli` and `--admin-password-stdin` for automation.
 
 Repository cloning remains supported for contributors. Operators only need the deployment bundle.
 
@@ -44,6 +46,30 @@ printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
 
 For Caddy, replace `--mode proxy --port 8080` with `--mode caddy --domain example.com --email ops@example.com`. The selected domain must already resolve to the server and ports 80 and 443 must be available.
 
+### Multiple instances on one host
+
+Named instances are stored below the selected base directory and use isolated Compose namespaces:
+
+```bash
+./install.sh install \
+  --instance staging \
+  --base-dir /opt/versiontracker \
+  --version v0.1.2 \
+  --mode proxy \
+  --port 18080 \
+  --url https://staging.tracker.example.com
+
+./install.sh install \
+  --instance production \
+  --base-dir /opt/versiontracker \
+  --version v0.1.2 \
+  --mode proxy \
+  --port 18081 \
+  --url https://tracker.example.com
+```
+
+The external reverse proxy should terminate TLS and forward each hostname to its matching loopback port. `APP_BIND_ADDRESS` defaults to `127.0.0.1`, so the application ports are not exposed publicly. Use `./install.sh list`, `status`, `doctor`, `backup`, and `update` with the same `--instance` and `--base-dir` values. Caddy mode is intentionally limited to one host-wide installation.
+
 ## Deployment modes
 
 Choose `caddy` for a public host with automatic HTTPS. Caddy receives ports 80 and 443, obtains the certificate, and forwards requests to the internal application container.
@@ -57,6 +83,7 @@ Important `.env.docker` settings:
 | `VERSION`                           | Required exact `v0.x.y` image tag.                        |
 | `IMAGE_REPOSITORY`                  | Published VersionTracker image repository.                |
 | `COMPOSE_PROJECT_NAME`              | Stable namespace for named volumes; keep `versiontracker` unless migrating. |
+| `VERSIONTRACKER_ENV_FILE`           | Absolute path to the selected instance environment file.  |
 | `MARIADB_IMAGE` / `CADDY_IMAGE`     | Tested, pinned supporting images.                         |
 | `DEPLOYMENT_MODE`                   | `proxy` or `caddy`; updates reuse this choice.            |
 | `APP_URL`                           | Public URL used for generated links.                      |
@@ -64,6 +91,7 @@ Important `.env.docker` settings:
 | `UPLOAD_MAX_KB` / `SBOM_MAX_KB`     | Application upload limits; defaults are 10240 and 20480. |
 | `SBOM_MAX_COMPONENTS`               | Maximum normalized SBOM components; default is 10000.   |
 | `DB_PASSWORD` / `DB_ROOT_PASSWORD`  | Generated MariaDB credentials; keep them private.         |
+| `INSTALLER_SETUP_TOKEN`             | One-time browser setup token; keep it private.            |
 | `MAIL_MAILER`                       | Mail transport; replace `log` with a production transport. |
 | `MAIL_HOST` / `MAIL_PORT`           | SMTP host and port when using the SMTP transport.         |
 | `MAIL_USERNAME` / `MAIL_PASSWORD`   | SMTP credentials, when required by the mail provider.     |
@@ -98,6 +126,25 @@ Upgrade by entering the next exact release tag:
 ```
 
 The command creates the backup first, changes `VERSION`, pulls only the new application image for `app`, `worker`, and `scheduler`, stops the old runtime, and runs database migrations before recreating the services. It refreshes Laravel caches and verifies `/up` plus the worker and scheduler processes. If image pull or Compose validation fails, the previous `VERSION` is restored. If migration or recreation fails, the runtime remains stopped and the new `VERSION` is retained so the failure can be inspected; use the backup before attempting a rollback. Inspect logs with `docker compose --project-name versiontracker --env-file .env.docker -f compose.yml -f compose.<mode>.yml logs`. Do not roll back after an irreversible migration without first restoring its backup.
+
+## Native installation without Docker
+
+The native release archive already contains `vendor/`, Laravel package manifests, Filament assets, and `public/build/`. Verify and unpack it on a host with PHP 8.4.1 or newer; Composer and Node.js are not needed on the target host:
+
+```bash
+VERSION=v0.1.2
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz"
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz.sha256"
+sha256sum --check "versiontracker-native-${VERSION}.tar.gz.sha256"
+tar -xzf "versiontracker-native-${VERSION}.tar.gz"
+cd "versiontracker-native-${VERSION}"
+./native-install.sh doctor
+./native-install.sh install --url https://tracker.example.com
+```
+
+SQLite is the default for a single environment. Set the database connection and credentials in `.env` before running the installer when using an existing MySQL, MariaDB, or PostgreSQL server. Configure the web server with `public/` as document root, run `php artisan queue:work database --queue=notifications,imports,default`, and schedule `php artisan schedule:run` every minute. The installer does not install or alter the web server and process manager.
+
+The archive includes `release-manifest.json` with the source commit and dependency/asset hashes. For local demos, use `php artisan app:install --demo`; the generated password is printed once. Do not use the demo profile for a public deployment.
 
 ## Restore
 

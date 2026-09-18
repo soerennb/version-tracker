@@ -30,11 +30,7 @@ class DemoDataSeeder extends Seeder
      */
     public function run(): void
     {
-        $owner = User::first() ?? User::factory()->create([
-            'name' => 'Demo Owner',
-            'email' => 'owner@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $owner = User::query()->where('email', 'demo@example.com')->firstOrFail();
 
         $this->environments();
 
@@ -46,11 +42,11 @@ class DemoDataSeeder extends Seeder
             'github_repo_url' => 'https://github.com/example/aurora',
         ]);
         $auroraVersions = $this->releases($aurora, $owner, [
-            ['version' => '1.0.0', 'released' => Carbon::now()->subMonths(13), 'support' => SupportStatus::EOL, 'eol' => Carbon::now()->subMonth()],
-            ['version' => '1.1.0', 'released' => Carbon::now()->subMonths(10), 'support' => SupportStatus::DEPRECATED, 'eol' => Carbon::now()->subDays(20)],
-            ['version' => '1.2.0', 'released' => Carbon::now()->subMonths(7), 'support' => SupportStatus::MAINTENANCE, 'eol' => Carbon::now()->addDays(45), 'lts' => Carbon::now()->addMonths(3)],
-            ['version' => '1.3.0', 'released' => Carbon::now()->subMonths(3), 'support' => SupportStatus::SUPPORTED, 'eol' => Carbon::now()->addMonths(9)],
-            ['version' => '1.4.0', 'released' => Carbon::now()->subWeeks(2), 'support' => SupportStatus::SUPPORTED, 'eol' => Carbon::now()->addMonths(12), 'lts' => Carbon::now()->addMonths(18)],
+            ['version' => '1.0.0', 'released' => $this->referenceDate()->subMonths(13), 'support' => SupportStatus::EOL, 'eol' => $this->referenceDate()->subMonth()],
+            ['version' => '1.1.0', 'released' => $this->referenceDate()->subMonths(10), 'support' => SupportStatus::DEPRECATED, 'eol' => $this->referenceDate()->subDays(20)],
+            ['version' => '1.2.0', 'released' => $this->referenceDate()->subMonths(7), 'support' => SupportStatus::MAINTENANCE, 'eol' => $this->referenceDate()->addDays(45), 'lts' => $this->referenceDate()->addMonths(3)],
+            ['version' => '1.3.0', 'released' => $this->referenceDate()->subMonths(3), 'support' => SupportStatus::SUPPORTED, 'eol' => $this->referenceDate()->addMonths(9)],
+            ['version' => '1.4.0', 'released' => $this->referenceDate()->subWeeks(2), 'support' => SupportStatus::SUPPORTED, 'eol' => $this->referenceDate()->addMonths(12), 'lts' => $this->referenceDate()->addMonths(18)],
         ]);
 
         $beacon = $this->software($owner, [
@@ -61,10 +57,10 @@ class DemoDataSeeder extends Seeder
             'github_repo_url' => 'https://github.com/example/beacon',
         ]);
         $beaconVersions = $this->releases($beacon, $owner, [
-            ['version' => '2.8.0', 'released' => Carbon::now()->subMonths(14), 'support' => SupportStatus::EOL, 'eol' => Carbon::now()->subMonths(2)],
-            ['version' => '3.0.0', 'released' => Carbon::now()->subMonths(9), 'support' => SupportStatus::MAINTENANCE, 'eol' => Carbon::now()->addDays(75)],
-            ['version' => '3.1.0', 'released' => Carbon::now()->subMonths(4), 'support' => SupportStatus::SUPPORTED, 'eol' => Carbon::now()->addMonths(8)],
-            ['version' => '3.2.0', 'released' => Carbon::now()->subWeeks(5), 'support' => SupportStatus::SUPPORTED, 'eol' => Carbon::now()->addMonths(14), 'lts' => Carbon::now()->addMonths(20)],
+            ['version' => '2.8.0', 'released' => $this->referenceDate()->subMonths(14), 'support' => SupportStatus::EOL, 'eol' => $this->referenceDate()->subMonths(2)],
+            ['version' => '3.0.0', 'released' => $this->referenceDate()->subMonths(9), 'support' => SupportStatus::MAINTENANCE, 'eol' => $this->referenceDate()->addDays(75)],
+            ['version' => '3.1.0', 'released' => $this->referenceDate()->subMonths(4), 'support' => SupportStatus::SUPPORTED, 'eol' => $this->referenceDate()->addMonths(8)],
+            ['version' => '3.2.0', 'released' => $this->referenceDate()->subWeeks(5), 'support' => SupportStatus::SUPPORTED, 'eol' => $this->referenceDate()->addMonths(14), 'lts' => $this->referenceDate()->addMonths(20)],
         ]);
 
         $nimbus = $this->software($owner, [
@@ -74,12 +70,12 @@ class DemoDataSeeder extends Seeder
             'compliance_status' => ComplianceStatus::UNKNOWN,
         ]);
         $nimbusVersions = $this->releases($nimbus, $owner, [
-            ['version' => '0.7.0', 'released' => Carbon::now()->subMonths(12), 'support' => SupportStatus::EOL, 'eol' => Carbon::now()->subMonths(4)],
-            ['version' => '0.8.0', 'released' => Carbon::now()->subMonths(6), 'support' => SupportStatus::MAINTENANCE, 'eol' => Carbon::now()->addMonths(2)],
-            ['version' => '0.9.0', 'released' => Carbon::now()->subWeeks(3), 'support' => SupportStatus::MAINTENANCE, 'eol' => Carbon::now()->addMonths(5)],
+            ['version' => '0.7.0', 'released' => $this->referenceDate()->subMonths(12), 'support' => SupportStatus::EOL, 'eol' => $this->referenceDate()->subMonths(4)],
+            ['version' => '0.8.0', 'released' => $this->referenceDate()->subMonths(6), 'support' => SupportStatus::MAINTENANCE, 'eol' => $this->referenceDate()->addMonths(2)],
+            ['version' => '0.9.0', 'released' => $this->referenceDate()->subWeeks(3), 'support' => SupportStatus::MAINTENANCE, 'eol' => $this->referenceDate()->addMonths(5)],
         ]);
 
-        $pending = $this->release($nimbus, $owner, '1.0.0', Carbon::now()->addWeeks(2), [
+        $pending = $this->release($nimbus, $owner, '1.0.0', $this->referenceDate()->addWeeks(2), [
             'status' => VersionStatus::DRAFT,
             'approval_status' => ApprovalStatus::PENDING,
         ]);
@@ -96,7 +92,7 @@ class DemoDataSeeder extends Seeder
             'fixed_version_id' => $auroraVersions['1.4.0']->id,
             'status' => VulnerabilityStatus::OPEN,
             'exploitability' => ExploitabilityStatus::PROOF_OF_CONCEPT,
-            'published_date' => Carbon::now()->subWeeks(4),
+            'published_date' => $this->referenceDate()->subWeeks(4),
         ]);
         $this->vulnerability($beaconVersions['3.1.0'], [
             'cve_id' => 'CVE-2026-1002',
@@ -109,7 +105,7 @@ class DemoDataSeeder extends Seeder
             'fixed_version_id' => $beaconVersions['3.2.0']->id,
             'status' => VulnerabilityStatus::OPEN,
             'exploitability' => ExploitabilityStatus::ACTIVE,
-            'published_date' => Carbon::now()->subDays(12),
+            'published_date' => $this->referenceDate()->subDays(12),
         ]);
         $this->vulnerability($nimbusVersions['0.8.0'], [
             'cve_id' => 'CVE-2026-1003',
@@ -122,7 +118,7 @@ class DemoDataSeeder extends Seeder
             'fixed_version_id' => $nimbusVersions['0.9.0']->id,
             'status' => VulnerabilityStatus::FIXED,
             'exploitability' => ExploitabilityStatus::NO_KNOWN_EXPLOIT,
-            'published_date' => Carbon::now()->subMonths(5),
+            'published_date' => $this->referenceDate()->subMonths(5),
         ]);
 
         $this->attachment($auroraVersions['1.4.0'], 'aurora-1.4.0-release-notes.pdf', 'Aurora Suite 1.4.0 release notes\n\nTimeline and approval workflow improvements.');
@@ -330,5 +326,10 @@ class DemoDataSeeder extends Seeder
                 ? "Verbesserte Betriebsübersicht, schnellere Suche und aktualisierte Sicherheitsinformationen für {$software->name} {$version}."
                 : "A calmer operations view, faster search, and refreshed security information for {$software->name} {$version}.",
         };
+    }
+
+    private function referenceDate(): Carbon
+    {
+        return Carbon::parse((string) config('installation.demo_reference_date', '2026-01-01'))->startOfDay();
     }
 }

@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Settings\InstallationState;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 use Tests\TestCase;
 
 class InstallApplicationCommandTest extends TestCase
@@ -43,23 +46,36 @@ class InstallApplicationCommandTest extends TestCase
     public function test_it_seeds_demo_data_when_requested(): void
     {
         $this->artisan('app:install --demo')
-            ->expectsConfirmation('Demo data creates a public administrator password. Continue?', 'yes')
+            ->expectsOutputToContain('Email: demo@example.com')
+            ->expectsOutputToContain('Password:')
             ->assertSuccessful();
 
-        $this->assertDatabaseHas('users', [
-            'email' => 'demo@example.com',
-            'role' => UserRole::ADMIN->value,
-        ]);
+        $demoUser = User::query()->where('email', 'demo@example.com')->sole();
+
+        $this->assertSame(UserRole::ADMIN, $demoUser->role);
+        $this->assertFalse(Hash::check('password', $demoUser->password));
         $this->assertDatabaseHas('software', ['name' => 'Aurora Suite']);
+        $this->assertSame('demo', app(InstallationState::class)->profile);
     }
 
-    public function test_it_stops_when_demo_data_is_not_explicitly_confirmed(): void
+    public function test_generic_database_seeding_cannot_create_demo_credentials(): void
     {
-        $this->artisan('app:install --demo')
-            ->expectsConfirmation('Demo data creates a public administrator password. Continue?', 'no')
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Use php artisan app:install --demo');
+
+        $this->artisan('db:seed');
+    }
+
+    public function test_demo_reset_requires_an_explicit_force_flag(): void
+    {
+        $this->artisan('app:install --demo')->assertSuccessful();
+
+        $this->artisan('app:install --reset-demo')
+            ->expectsOutputToContain('Demo reset is destructive')
             ->assertFailed();
 
-        $this->assertDatabaseCount('users', 0);
+        $this->assertDatabaseCount('users', 1);
+        $this->assertSame('demo', app(InstallationState::class)->profile);
     }
 
     public function test_it_refuses_to_initialize_an_application_with_existing_users(): void

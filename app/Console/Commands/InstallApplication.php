@@ -4,15 +4,21 @@ namespace App\Console\Commands;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Settings\InstallationState;
+use Database\Seeders\DemoDataSeeder;
+use Database\Seeders\DemoUserSeeder;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 #[Signature('app:install
     {--demo : Seed the demo user and data instead of creating an administrator}
     {--no-demo : Do not ask whether to seed demo data}
+    {--reset-demo : Reset a database previously initialized with the demo profile}
+    {--force : Confirm the destructive demo reset}
     {--admin-name= : First administrator name}
     {--admin-email= : First administrator email}
     {--admin-password-stdin : Read the first administrator password from standard input}')]
@@ -21,7 +27,31 @@ class InstallApplication extends Command
 {
     public function handle(): int
     {
-        $this->call('migrate', ['--force' => true]);
+        if ($this->call('migrate', ['--force' => true]) !== self::SUCCESS) {
+            return self::FAILURE;
+        }
+
+        if ($this->option('reset-demo')) {
+            $state = app(InstallationState::class);
+
+            if ($state->profile !== 'demo') {
+                $this->components->error('Demo reset is allowed only for an application marked with the demo profile.');
+
+                return self::FAILURE;
+            }
+
+            if (! $this->option('force')) {
+                $this->components->error('Demo reset is destructive. Re-run with --force to confirm.');
+
+                return self::FAILURE;
+            }
+
+            if ($this->call('migrate:fresh', ['--force' => true]) !== self::SUCCESS) {
+                return self::FAILURE;
+            }
+            app()->forgetInstance(InstallationState::class);
+            Storage::disk(config('filesystems.default', 'local'))->deleteDirectory('attachments');
+        }
 
         if (User::query()->exists()) {
             $this->components->error('Installation stopped because one or more users already exist.');
@@ -29,19 +59,21 @@ class InstallApplication extends Command
             return self::FAILURE;
         }
 
-        $shouldCreateDemoData = $this->option('demo') || (! $this->option('no-demo') && $this->confirm('Create demo data?', false));
+        $shouldCreateDemoData = $this->option('demo') || $this->option('reset-demo') || (! $this->option('no-demo') && $this->confirm('Create demo data?', false));
 
         if ($shouldCreateDemoData) {
-            if (! $this->confirm('Demo data creates a public administrator password. Continue?', false)) {
-                $this->components->warn('Installation stopped. No demo data was created.');
+            $password = bin2hex(random_bytes(18));
+            app(DemoUserSeeder::class)->run($password);
+            app(DemoDataSeeder::class)->run();
+            app(InstallationState::class)->complete('demo');
 
-                return self::FAILURE;
-            }
-
-            $this->call('db:seed');
             $this->components->info('Demo data and the demo administrator were created.');
+            $this->components->warn('Demo credentials (store them securely):');
+            $this->line('  Email: demo@example.com');
+            $this->line("  Password: {$password}");
         } else {
             $this->createAdministrator();
+            app(InstallationState::class)->complete();
         }
 
         if (! app()->runningUnitTests()) {

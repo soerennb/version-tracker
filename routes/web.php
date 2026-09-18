@@ -5,9 +5,17 @@ use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Public\DownloadController;
 use App\Http\Controllers\Public\ReleaseFeedController;
 use App\Http\Controllers\PublicSecurityController;
+use App\Http\Controllers\SetupController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome');
+
+Route::get('/install', [SetupController::class, 'create'])
+    ->middleware('throttle:10,1')
+    ->name('setup.create');
+Route::post('/install', [SetupController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('setup.store');
 
 Route::get('/account/verify-email/{id}/{hash}', [AuthController::class, 'verify'])
     ->middleware(['auth', 'signed', 'throttle:verification'])

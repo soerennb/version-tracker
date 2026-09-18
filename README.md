@@ -112,13 +112,29 @@ For a local evaluation installation, use the demo mode on a fresh database inste
 php artisan app:install --demo
 ```
 
-This creates the demo dataset and the following demo account:
+The command creates the demo dataset and prints a newly generated demo password once:
 
 | User | Password |
 | ---- | -------- |
-| `demo@example.com` | `password` |
+| `demo@example.com` | generated during setup |
 
-The demo credentials are intentionally weak and must never be used for a production deployment.
+The demo profile is intended for local evaluation only. Generic `php artisan db:seed` calls are rejected so that demo credentials cannot be created accidentally. A marked demo installation can be rebuilt explicitly with `php artisan app:install --reset-demo --force`.
+
+### Native single-environment installation
+
+Tagged releases also provide a prepared native bundle with Composer dependencies and compiled frontend assets. It requires PHP 8.4.1 or newer and a configured web server, but no Docker, Composer, or Node.js on the target host:
+
+```bash
+VERSION=v0.1.2
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz"
+curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz.sha256"
+sha256sum --check "versiontracker-native-${VERSION}.tar.gz.sha256"
+tar -xzf "versiontracker-native-${VERSION}.tar.gz"
+cd "versiontracker-native-${VERSION}"
+./native-install.sh install --url https://tracker.example.com
+```
+
+The native installer defaults to SQLite, supports an already configured MySQL, MariaDB, or PostgreSQL connection, and prints a one-time setup token for `/install`. It does not modify Nginx/Apache, PHP-FPM, systemd, or cron configuration; point the web server at `public/` and run the queue worker and scheduler according to your host's process manager.
 
 ## Application access
 
@@ -171,7 +187,7 @@ The application uses database-backed queues and scheduling in production. The Do
 
 ## Self-hosting with Docker
 
-Every `v0.x.y` GitHub release publishes a multi-platform container image (`linux/amd64` and `linux/arm64`) at `ghcr.io/soerennb/version-tracker` and a compact deployment bundle. Use a concrete release tag or digest for production; `latest` is intended for evaluation only. The bundle pins the MariaDB and Caddy support images by tag and digest.
+Every `v0.x.y` GitHub release publishes a multi-platform container image (`linux/amd64` and `linux/arm64`) at `ghcr.io/soerennb/version-tracker`, a Docker deployment bundle, and a Dockerless native installation bundle. Use a concrete release tag or digest for production; `latest` is intended for evaluation only. The Docker bundle pins the MariaDB and Caddy support images by tag and digest.
 
 ### Deployment bundle
 
@@ -209,7 +225,28 @@ printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
   --admin-password-stdin
 ```
 
-The installer creates protected environment files and secrets, initializes MariaDB, starts the application, worker, and scheduler services, runs migrations, and checks `/up`. The default Compose project name is `versiontracker`, so named volumes remain stable when a release bundle is unpacked into a new directory. Keep that value unless you intentionally migrate volumes.
+The installer creates protected environment files and secrets, initializes MariaDB, starts the application, worker, and scheduler services, runs migrations, and checks `/up`. Interactive installations prepare the application and print a one-time setup token for `/install`; use `--setup cli` with `--admin-password-stdin` for fully automated provisioning. The browser setup never writes host or container environment files. The default Compose project name is `versiontracker`, so named volumes remain stable when a release bundle is unpacked into a new directory. Keep that value unless you intentionally migrate volumes.
+
+### Multiple isolated instances
+
+Use proxy mode and a unique instance name for staging, production, or customer environments on the same host:
+
+```bash
+./install.sh install \
+  --instance staging \
+  --base-dir /opt/versiontracker \
+  --version v0.1.2 \
+  --mode proxy \
+  --port 18080 \
+  --url https://staging.tracker.example.com
+
+./install.sh list --base-dir /opt/versiontracker
+./install.sh status --instance staging --base-dir /opt/versiontracker
+./install.sh backup --instance staging --base-dir /opt/versiontracker
+./install.sh update --instance staging --base-dir /opt/versiontracker --version v0.1.3 --yes
+```
+
+Each named instance gets its own environment file, MariaDB data, application storage, Compose project, cache prefix, session cookie, and backup directory. The proxy should route `staging.tracker.example.com` to `127.0.0.1:18080`; choose another host port for every additional instance. Caddy mode remains a single host-wide installation because it owns ports 80 and 443.
 
 In Caddy mode, ports 80 and 443 must be available and DNS must already point to the server. In proxy mode, unattended installations can set the public URL and proxy trust explicitly:
 
@@ -228,15 +265,17 @@ printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
 
 Configure the existing reverse proxy and set `TRUSTED_PROXIES` as described in the [self-hosting guide](docs/self-hosting.md), which also covers configuration, mail delivery, backup verification, restore, and rollback.
 
-The base Compose stack consists of `app`, `db`, `worker`, and `scheduler`. The worker consumes the `notifications`, `imports`, and `default` queues; the scheduler runs Laravel's scheduled tasks. Only `app` exposes the HTTP health check because the worker and scheduler are long-running CLI services. The image sets PHP's web upload and request limits to 32 MB; application-level defaults allow 10 MB attachments and 20 MB SBOM documents and can be adjusted through `.env.docker`.
+The base Compose stack consists of `app`, `db`, `worker`, and `scheduler`. The worker consumes the `notifications`, `imports`, and `default` queues; the scheduler runs Laravel's scheduled tasks. Only `app` exposes the HTTP health check because the worker and scheduler are long-running CLI services. The published image contains the Laravel package manifests, Filament assets, PHP extensions, Apache configuration, and compiled frontend assets required by the full stack. The image is tested through Compose; it is not an all-in-one SQLite container. PHP's web upload and request limits are set to 32 MB; application-level defaults allow 10 MB attachments and 20 MB SBOM documents and can be adjusted through `.env.docker`.
 
 `./install.sh update` creates a backup containing the database, Laravel storage, environment file, a manifest, and SHA-256 checksums before pulling the new application image. It migrates before recreating the runtime services and pulls only `app`, `worker`, and `scheduler`; if migration or recreation fails, inspect the logs and use the recorded backup before attempting a rollback.
+
+Every release also publishes `versiontracker-native-v0.x.y.tar.gz` with a matching SHA-256 file and release manifest for a single non-Docker environment. It contains the locked Composer dependencies, Laravel package cache, Filament assets, compiled frontend assets, and `native-install.sh`; Composer and Node.js are not required on the target host. Use it on a host with PHP 8.4.1 or newer and configure the web server and process manager separately.
 
 ## CI and releases
 
 - **CI gate** validates changed areas with frontend builds, PHP tests and Pint, SQLite/MariaDB integration checks, container and Compose validation, installer checks, and backup/restore tests.
 - **Security gate** runs secret scanning on every pull request and `master` push, plus dependency audits and Semgrep SAST for the relevant changes.
-- **Tagged releases** matching `v0.*.*` repeat the PHP 8.4/8.5 validation matrix, publish multi-platform GHCR images with provenance and an SBOM, smoke-test the immutable image, run container security checks, and publish the deployment bundle with a SHA-256 checksum.
+- **Tagged releases** matching `v0.*.*` repeat the PHP 8.4/8.5 validation matrix, build and smoke-test the extracted native bundle, publish multi-platform GHCR images with provenance and an SBOM, validate the immutable image through the complete Compose stack, run container security checks, and publish both checksummed installation archives.
 
 See the [release guide](docs/releasing.md) for the maintainer release procedure.
 

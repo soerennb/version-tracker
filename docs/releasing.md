@@ -13,7 +13,7 @@ Releases are deliberately tag-driven. A maintainer creates a concrete `v0.x.y` t
    git push origin v0.1.0
    ```
 
-4. Verify the Release workflow. It repeats the complete PHP 8.4/8.5 release validation matrix (frontend build, application tests, and dependency audits) for the immutable tag, builds and publishes `linux/amd64` and `linux/arm64` container images with provenance and an SBOM, smoke-tests the published image by digest, and creates the GitHub Release.
+4. Verify the Release workflow. It repeats the complete PHP 8.4/8.5 release validation matrix, builds and extracts the native bundle without development dependencies, installs it with SQLite, checks the web and admin routes, builds and publishes `linux/amd64` and `linux/arm64` container images with provenance and an SBOM, validates the immutable image by running the complete Compose stack with MariaDB, and creates the GitHub Release only after both paths pass.
 5. Check the generated release notes. Add a concise **Upgrade notes** section that calls out migrations, changed environment variables, deprecations, and any manual operator action.
 
 ## Published images
@@ -24,6 +24,10 @@ Each release produces:
 - `ghcr.io/soerennb/version-tracker:v0.x` for the current patch in a minor line.
 - `ghcr.io/soerennb/version-tracker:latest` for evaluation only.
 
-The deployment bundle includes the installer, Compose files, Caddy configuration, environment template, and self-hosting guide. The supporting MariaDB and Caddy image references in the template are pinned by tag and digest so a fresh installation uses the same tested base images as CI.
+- `versiontracker-deploy-v0.x.y.tar.gz` plus its SHA-256 file for Docker Compose installations.
+- `versiontracker-native-v0.x.y.tar.gz` plus its SHA-256 file for Dockerless installations.
+- `release-manifest.json` containing the release commit, immutable image digest, and archive hashes.
+
+The Docker deployment bundle includes the installer, Compose files, Caddy configuration, environment template, self-hosting guide, and a release manifest. The native bundle includes the application, locked Composer dependencies, Laravel package cache, Filament assets, compiled frontend assets, `native-install.sh`, and the relevant installation documentation. Neither bundle contains `.env` files or credentials. The supporting MariaDB and Caddy image references in the Docker template are pinned by tag and digest so a fresh installation uses the same tested support images as CI.
 
 Operators should deploy the precise tag or the image digest included in the GitHub Release.
