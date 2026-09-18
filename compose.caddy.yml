@@ -4,17 +4,24 @@ services:
       TRUSTED_PROXIES: "*"
 
   caddy:
-    image: ${CADDY_IMAGE:-caddy:2.11.4}
+    image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f}
     depends_on:
       app:
         condition: service_healthy
     environment:
-      CADDY_DOMAIN: ${CADDY_DOMAIN}
-      CADDY_EMAIL: ${CADDY_EMAIL}
+      CADDY_DOMAIN: ${CADDY_DOMAIN:?Set CADDY_DOMAIN for Caddy mode}
+      CADDY_EMAIL: ${CADDY_EMAIL:?Set CADDY_EMAIL for Caddy mode}
     ports:
       - "80:80"
       - "443:443"
     restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -22,4 +29,6 @@ services:
 
 volumes:
   caddy_data:
+    name: ${COMPOSE_PROJECT_NAME:-versiontracker}_caddy_data
   caddy_config:
+    name: ${COMPOSE_PROJECT_NAME:-versiontracker}_caddy_config

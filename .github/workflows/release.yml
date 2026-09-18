@@ -53,6 +53,7 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:${{ steps.versions.outputs.minor }}
@@ -78,7 +79,9 @@ jobs:
             --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
             "$IMAGE@$DIGEST"
 
-          for attempt in {1..30}; do
+          trap 'docker rm --force versiontracker >/dev/null 2>&1 || true' EXIT
+
+          for _ in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/up; then
               exit 0
             fi
@@ -116,6 +119,9 @@ jobs:
           backup_directory="$(./install.sh backup)"
           test -s "$backup_directory/database.sql"
           test -s "$backup_directory/storage.tar.gz"
+          test -s "$backup_directory/manifest"
+          test -s "$backup_directory/checksums.sha256"
+          sha256sum --check --strict "$backup_directory/checksums.sha256"
 
       - name: Build deployment bundle
         env:

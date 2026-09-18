@@ -21,8 +21,14 @@ jobs:
     uses: ./.github/workflows/change-classification.yml
 
   php:
-    name: PHP quality and tests
+    name: PHP quality and tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php:
+          - "8.4"
+          - "8.5"
     needs:
       - changes
       - frontend
@@ -37,7 +43,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version: ${{ matrix.php }}
           tools: composer
           extensions: intl, mbstring, pdo_sqlite, sqlite3
 
@@ -45,8 +51,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.cache/composer/files
-          key: ${{ runner.os }}-php-8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: ${{ runner.os }}-php-8.4-
+          key: ${{ runner.os }}-php-${{ matrix.php }}-${{ hashFiles('composer.lock') }}
+          restore-keys: ${{ runner.os }}-php-${{ matrix.php }}-
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
@@ -108,8 +114,14 @@ jobs:
           path: public/build
 
   mariadb:
-    name: MariaDB integration tests
+    name: MariaDB integration tests (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php:
+          - "8.4"
+          - "8.5"
     needs:
       - changes
       - frontend
@@ -119,7 +131,7 @@ jobs:
       needs.changes.outputs.automation == 'true'
     services:
       db:
-        image: mariadb:11
+        image: mariadb:11.8.8@sha256:24e76fcec8c003a0362d0dd53f4806e7e79458d7fdeaf47437760e19496f5a9c
         env:
           MARIADB_DATABASE: versiontracker
           MARIADB_USER: versiontracker
@@ -129,6 +141,7 @@ jobs:
           --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=10s
           --health-timeout=5s
+          --health-start-period=30s
           --health-retries=10
         ports:
           - 3306:3306
@@ -139,7 +152,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version: ${{ matrix.php }}
           tools: composer
           extensions: intl, mbstring, pdo_mysql
 
@@ -205,7 +218,9 @@ jobs:
           sed -i 's/^APP_KEY=$/APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=/' .env.docker
           sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=versiontracker/' .env.docker
           sed -i 's/^DB_ROOT_PASSWORD=$/DB_ROOT_PASSWORD=root/' .env.docker
-          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml config --quiet
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml config --format json > compose.config.json
+          jq -e '.services.app.healthcheck != null and .services.worker.healthcheck == null and .services.scheduler.healthcheck == null' compose.config.json
+          jq -e '.services.worker.command | index("--queue=notifications,imports,default") != null' compose.config.json
 
       - name: Initialize and check application
         run: |
@@ -214,7 +229,7 @@ jobs:
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app worker scheduler
 
           healthy=false
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/up; then
               healthy=true
               break
@@ -232,17 +247,25 @@ jobs:
             docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml ps --status running --services | grep --fixed-strings --line-regexp "$service"
           done
 
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app php -r "exit(ini_get('upload_max_filesize') === '32M' && ini_get('post_max_size') === '32M' && ini_get('memory_limit') === '256M' ? 0 : 1);"
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app test -L /var/www/html/public/storage
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app apachectl -t
+          docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY app sh -c 'test "$(stat --format=%a /var/www/html)" = 755'
+
       - name: Back up and restore application data
         run: |
           backup_directory="$(./install.sh backup)"
           test -s "$backup_directory/database.sql"
           test -s "$backup_directory/storage.tar.gz"
           test "$(stat --format=%a "$backup_directory/environment.backup")" = 600
+          test -s "$backup_directory/manifest"
+          test -s "$backup_directory/checksums.sha256"
+          sha256sum --check --strict "$backup_directory/checksums.sha256"
 
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml down --volumes --remove-orphans
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach db
 
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml exec --no-TTY db healthcheck.sh --connect --innodb_initialized; then
               break
             fi
@@ -255,7 +278,7 @@ jobs:
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml run --rm app sh -c 'tar -xzf - -C /var/www/html' < "$backup_directory/storage.tar.gz"
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml up --detach app worker scheduler
 
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/up; then
               exit 0
             fi
@@ -289,11 +312,15 @@ jobs:
         run: |
           cp .env.docker.example .env.docker
           sed -i 's/^VERSION=$/VERSION=v0.0.0/' .env.docker
+          sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=ci/' .env.docker
+          sed -i 's/^DB_ROOT_PASSWORD=$/DB_ROOT_PASSWORD=ci-root/' .env.docker
+          sed -i 's/^CADDY_DOMAIN=$/CADDY_DOMAIN=example.invalid/' .env.docker
+          sed -i 's/^CADDY_EMAIL=$/CADDY_EMAIL=ci@example.invalid/' .env.docker
           docker compose --env-file .env.docker -f compose.yml -f compose.proxy.yml config --quiet
           docker compose --env-file .env.docker -f compose.yml -f compose.caddy.yml config --quiet
 
       - name: Validate Caddyfile
-        run: docker run --rm --env CADDY_DOMAIN=example.invalid --env CADDY_EMAIL=ci@example.invalid --volume "$GITHUB_WORKSPACE/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.4 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        run: docker run --rm --env CADDY_DOMAIN=example.invalid --env CADDY_EMAIL=ci@example.invalid --volume "$GITHUB_WORKSPACE/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.4@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
   shell:
     name: Installer script
@@ -313,6 +340,7 @@ jobs:
       - name: Lint installer
         run: |
           test -x install.sh
+          bash -n install.sh
           shellcheck install.sh
 
   gate:

@@ -8,8 +8,11 @@ readonly backup_directory=backups
 install_version=''
 install_mode=''
 install_port=''
+install_url=''
 install_domain=''
 install_email=''
+install_trusted_hosts=''
+install_trusted_proxies=''
 install_admin_name=''
 install_admin_email=''
 install_admin_password_stdin=false
@@ -17,9 +20,12 @@ install_admin_password_stdin=false
 set_environment_value() {
     local key="$1"
     local value="$2"
+    local escaped_value
+
+    escaped_value="$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')"
 
     if grep -q "^${key}=" "$environment_file"; then
-        sed -i "s|^${key}=.*|${key}=${value}|" "$environment_file"
+        sed -i "s|^${key}=.*|${key}=${escaped_value}|" "$environment_file"
     else
         printf '%s=%s\n' "$key" "$value" >> "$environment_file"
     fi
@@ -44,8 +50,30 @@ compose_file_for_mode() {
     esac
 }
 
+configured_project_name() {
+    if [[ -n "${COMPOSE_PROJECT_NAME:-}" ]]; then
+        printf '%s\n' "$COMPOSE_PROJECT_NAME"
+
+        return
+    fi
+
+    if [[ -f "$environment_file" ]] && grep -q '^COMPOSE_PROJECT_NAME=' "$environment_file"; then
+        local project_name
+        project_name="$(environment_value COMPOSE_PROJECT_NAME || true)"
+
+        if [[ -n "$project_name" ]]; then
+            printf '%s\n' "$project_name"
+
+            return
+        fi
+
+    fi
+
+    printf '%s\n' versiontracker
+}
+
 compose() {
-    docker compose --env-file "$environment_file" -f compose.yml -f "$1" "${@:2}"
+    docker compose --project-name "$(configured_project_name)" --env-file "$environment_file" -f compose.yml -f "$1" "${@:2}"
 }
 
 require_command() {
@@ -55,14 +83,26 @@ require_command() {
     }
 }
 
+require_option_value() {
+    if [[ $# -lt 2 || -z "$2" ]]; then
+        echo "Option $1 requires a value." >&2
+        exit 1
+    fi
+}
+
 is_valid_version() {
     [[ "$1" =~ ^v0\.[0-9]+\.[0-9]+$ ]]
+}
+
+is_valid_http_url() {
+    [[ "$1" =~ ^https?://[^/?#[:space:]]+(/[^[:space:]]*)?$ ]]
 }
 
 usage() {
     cat <<'EOF'
 Usage:
   ./install.sh install [--version v0.x.y] [--mode proxy|caddy] [--port PORT]
+                       [--url URL] [--trusted-hosts HOSTS] [--trusted-proxies PROXIES]
                        [--domain DOMAIN --email EMAIL]
                        [--admin-name NAME --admin-email EMAIL --admin-password-stdin]
   ./install.sh update
@@ -77,30 +117,52 @@ parse_install_options() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --version)
+                require_option_value "$1" "${2:-}"
                 install_version="$2"
                 shift 2
                 ;;
             --mode)
+                require_option_value "$1" "${2:-}"
                 install_mode="$2"
                 shift 2
                 ;;
             --port)
+                require_option_value "$1" "${2:-}"
                 install_port="$2"
                 shift 2
                 ;;
+            --url)
+                require_option_value "$1" "${2:-}"
+                install_url="$2"
+                shift 2
+                ;;
             --domain)
+                require_option_value "$1" "${2:-}"
                 install_domain="$2"
                 shift 2
                 ;;
             --email)
+                require_option_value "$1" "${2:-}"
                 install_email="$2"
                 shift 2
                 ;;
+            --trusted-hosts)
+                require_option_value "$1" "${2:-}"
+                install_trusted_hosts="$2"
+                shift 2
+                ;;
+            --trusted-proxies)
+                require_option_value "$1" "${2:-}"
+                install_trusted_proxies="$2"
+                shift 2
+                ;;
             --admin-name)
+                require_option_value "$1" "${2:-}"
                 install_admin_name="$2"
                 shift 2
                 ;;
             --admin-email)
+                require_option_value "$1" "${2:-}"
                 install_admin_email="$2"
                 shift 2
                 ;;
@@ -130,6 +192,11 @@ parse_install_options() {
         exit 1
     fi
 
+    if [[ -n "$install_url$install_trusted_hosts$install_trusted_proxies" && "$install_mode" == caddy ]]; then
+        echo 'URL and trusted proxy options require proxy mode.' >&2
+        exit 1
+    fi
+
     if [[ "$install_admin_password_stdin" == true ]] && [[ -z "$install_admin_name" || -z "$install_admin_email" ]]; then
         echo 'Administrator name and email are required with --admin-password-stdin.' >&2
         exit 1
@@ -151,6 +218,7 @@ preflight() {
     require_command grep
     require_command sed
     require_command tar
+    require_command sha256sum
     docker compose version >/dev/null
     docker info >/dev/null
 }
@@ -182,9 +250,27 @@ configure_installation() {
         read -r -p 'Use Caddy automatic HTTPS? [y/N]: ' mode
     fi
 
-    if [[ "$mode" =~ ^[Yy]$ || "$mode" == caddy ]]; then
+    case "$mode" in
+        y|Y|caddy)
+            mode=caddy
+            ;;
+        n|N|proxy|'')
+            mode=proxy
+            ;;
+        *)
+            echo 'Choose either proxy or caddy mode.' >&2
+            exit 1
+            ;;
+    esac
+
+    if [[ "$mode" == caddy ]]; then
         local domain="$install_domain"
         local email="$install_email"
+
+        if [[ -n "$install_url$install_trusted_hosts$install_trusted_proxies" ]]; then
+            echo 'URL and trusted proxy options require proxy mode.' >&2
+            exit 1
+        fi
 
         if [[ -z "$domain" ]]; then
             read -r -p 'Public domain: ' domain
@@ -195,6 +281,8 @@ configure_installation() {
         fi
 
         [[ -n "$domain" && -n "$email" ]] || { echo 'A domain and email are required for Caddy.' >&2; exit 1; }
+        [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'The Caddy domain must contain only letters, numbers, dots, and hyphens.' >&2; exit 1; }
+        [[ "$email" =~ ^[^[:space:]@]+@[^[:space:]@]+$ ]] || { echo 'The ACME email address is invalid.' >&2; exit 1; }
 
         check_port 80
         check_port 443
@@ -216,12 +304,51 @@ configure_installation() {
     fi
 
     port="${port:-8080}"
-    [[ "$port" =~ ^[0-9]+$ ]] || { echo 'Application port must be numeric.' >&2; exit 1; }
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); then
+        echo 'Application port must be between 1 and 65535.' >&2
+        exit 1
+    fi
+    if [[ -n "$install_url" ]] && ! is_valid_http_url "$install_url"; then
+        echo 'The application URL must be an absolute http:// or https:// URL without whitespace.' >&2
+        exit 1
+    fi
     check_port "$port"
     set_environment_value DEPLOYMENT_MODE proxy
     set_environment_value APP_PORT "$port"
-    set_environment_value APP_URL "http://localhost:${port}"
+    set_environment_value APP_URL "${install_url:-http://localhost:${port}}"
+
+    if [[ -n "$install_trusted_hosts" ]]; then
+        set_environment_value TRUSTED_HOSTS "$install_trusted_hosts"
+    fi
+
+    if [[ -n "$install_trusted_proxies" ]]; then
+        set_environment_value TRUSTED_PROXIES "$install_trusted_proxies"
+    fi
+
     compose_file_for_mode proxy
+}
+
+validate_environment() {
+    local key
+    local value
+
+    for key in VERSION APP_KEY DB_DATABASE DB_USERNAME DB_PASSWORD DB_ROOT_PASSWORD DEPLOYMENT_MODE; do
+        value="$(environment_value "$key" || true)"
+
+        if [[ -z "$value" ]]; then
+            echo "${key} must be set in ${environment_file}." >&2
+            exit 1
+        fi
+    done
+
+    case "$(environment_value DEPLOYMENT_MODE)" in
+        proxy|caddy)
+            ;;
+        *)
+            echo 'DEPLOYMENT_MODE must be either proxy or caddy.' >&2
+            exit 1
+            ;;
+    esac
 }
 
 initialize_application() {
@@ -242,6 +369,7 @@ initialize_application() {
 
 configured_compose_file() {
     [[ -f "$environment_file" ]] || { echo 'Run ./install.sh install first.' >&2; exit 1; }
+    validate_environment
 
     local mode
     mode="$(environment_value DEPLOYMENT_MODE)"
@@ -291,6 +419,7 @@ install() {
 
     local compose_file
     compose_file="$(configure_installation)"
+    validate_environment
 
     compose "$compose_file" config >/dev/null
     compose "$compose_file" pull
@@ -306,24 +435,54 @@ update() {
     preflight
 
     local compose_file
+    local current_version
     local version
     compose_file="$(configured_compose_file)"
+    current_version="$(environment_value VERSION)"
 
     read -r -p 'New release image version: ' version
     is_valid_version "$version" || {
         echo 'Enter a concrete v0.x.y release tag.' >&2
         exit 1
     }
+    if [[ "$version" == "$current_version" ]]; then
+        echo "Version is already ${current_version}." >&2
+        exit 1
+    fi
+
+    local backup_path
+    backup_path="$(backup)"
+    echo "Backup created at ${backup_path}."
+
     set_environment_value VERSION "$version"
 
-    compose "$compose_file" config >/dev/null
+    if ! compose "$compose_file" config >/dev/null; then
+        set_environment_value VERSION "$current_version"
+        echo "Compose validation failed; VERSION restored to ${current_version}." >&2
+        exit 1
+    fi
+
+    if ! compose "$compose_file" pull app worker scheduler; then
+        set_environment_value VERSION "$current_version"
+        echo "Image pull failed; VERSION restored to ${current_version}." >&2
+        exit 1
+    fi
+
     compose "$compose_file" stop app worker scheduler
-    compose "$compose_file" pull
-    compose "$compose_file" run --rm app php artisan migrate --force
-    compose "$compose_file" up -d --force-recreate app worker scheduler
-    compose "$compose_file" exec -T app php artisan optimize
+
+    if ! compose "$compose_file" run --rm --no-deps app php artisan migrate --force; then
+        echo "Migration failed after the runtime was stopped. VERSION remains ${version}; inspect the failure and restore from ${backup_path} if needed." >&2
+        exit 1
+    fi
+
+    if ! compose "$compose_file" up -d --force-recreate app worker scheduler; then
+        echo "Runtime recreation failed after migration. VERSION remains ${version}; restore from ${backup_path} if needed." >&2
+        exit 1
+    fi
+
     wait_for_health "$compose_file"
     wait_for_runtime_services "$compose_file"
+    compose "$compose_file" exec -T app php artisan optimize
     compose "$compose_file" ps
 }
 
@@ -349,9 +508,19 @@ backup() {
 
     umask 077
     mkdir -p "$target_directory"
-    compose "$compose_file" exec -T db sh -c "exec mariadb-dump -uroot -p\"\$MARIADB_ROOT_PASSWORD\" \"\$MARIADB_DATABASE\"" > "$target_directory/database.sql"
+    compose "$compose_file" exec -T db sh -c "exec mariadb-dump --single-transaction --quick --routines --events --triggers -uroot -p\"\$MARIADB_ROOT_PASSWORD\" \"\$MARIADB_DATABASE\"" > "$target_directory/database.sql"
     compose "$compose_file" exec -T app tar -C /var/www/html -czf - storage > "$target_directory/storage.tar.gz"
     cp "$environment_file" "$target_directory/environment.backup"
+    chmod 600 "$target_directory/database.sql" "$target_directory/storage.tar.gz" "$target_directory/environment.backup"
+    {
+        printf 'created_at=%s\n' "$timestamp"
+        printf 'version=%s\n' "$(environment_value VERSION)"
+        printf 'deployment_mode=%s\n' "$(environment_value DEPLOYMENT_MODE)"
+        printf 'project_name=%s\n' "$(configured_project_name)"
+    } > "$target_directory/manifest"
+    chmod 600 "$target_directory/manifest"
+    sha256sum "$target_directory/database.sql" "$target_directory/storage.tar.gz" "$target_directory/environment.backup" > "$target_directory/checksums.sha256"
+    chmod 600 "$target_directory/checksums.sha256"
     printf '%s\n' "$target_directory"
 }
 

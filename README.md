@@ -68,7 +68,7 @@ Only published content is exposed publicly. Catalog, search, products, timeline,
 
 | Runtime context | PHP | Node.js |
 | --------------- | --- | ------- |
-| CI support floor | 8.4 | 24 |
+| CI matrix | 8.4 and 8.5 | 24 |
 | Local development | >= 8.4.1 | >= 22.18 |
 | Production image | 8.5 | 26 |
 
@@ -171,7 +171,7 @@ The application uses database-backed queues and scheduling in production. The Do
 
 ## Self-hosting with Docker
 
-Every `v0.x.y` GitHub release publishes a container image at `ghcr.io/soerennb/version-tracker` and a compact deployment bundle. Use a concrete release tag or digest for production; `latest` is intended for evaluation only.
+Every `v0.x.y` GitHub release publishes a multi-platform container image (`linux/amd64` and `linux/arm64`) at `ghcr.io/soerennb/version-tracker` and a compact deployment bundle. Use a concrete release tag or digest for production; `latest` is intended for evaluation only. The bundle pins the MariaDB and Caddy support images by tag and digest.
 
 ### Deployment bundle
 
@@ -209,13 +209,34 @@ printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
   --admin-password-stdin
 ```
 
-The installer creates protected environment files and secrets, initializes MariaDB, starts the application, worker, and scheduler services, runs migrations, and checks `/up`. In Caddy mode, ports 80 and 443 must be available and DNS must already point to the server. In proxy mode, configure the existing reverse proxy and set `TRUSTED_PROXIES` as described in the [self-hosting guide](docs/self-hosting.md), which also covers configuration, mail delivery, restore, and rollback.
+The installer creates protected environment files and secrets, initializes MariaDB, starts the application, worker, and scheduler services, runs migrations, and checks `/up`. The default Compose project name is `versiontracker`, so named volumes remain stable when a release bundle is unpacked into a new directory. Keep that value unless you intentionally migrate volumes.
+
+In Caddy mode, ports 80 and 443 must be available and DNS must already point to the server. In proxy mode, unattended installations can set the public URL and proxy trust explicitly:
+
+```bash
+printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
+  --version v0.1.2 \
+  --mode proxy \
+  --port 8080 \
+  --url https://tracker.example.com \
+  --trusted-hosts tracker.example.com \
+  --trusted-proxies 172.20.0.0/16 \
+  --admin-name 'Administrator' \
+  --admin-email admin@example.com \
+  --admin-password-stdin
+```
+
+Configure the existing reverse proxy and set `TRUSTED_PROXIES` as described in the [self-hosting guide](docs/self-hosting.md), which also covers configuration, mail delivery, backup verification, restore, and rollback.
+
+The base Compose stack consists of `app`, `db`, `worker`, and `scheduler`. The worker consumes the `notifications`, `imports`, and `default` queues; the scheduler runs Laravel's scheduled tasks. Only `app` exposes the HTTP health check because the worker and scheduler are long-running CLI services. The image sets PHP's web upload and request limits to 32 MB; application-level defaults allow 10 MB attachments and 20 MB SBOM documents and can be adjusted through `.env.docker`.
+
+`./install.sh update` creates a backup containing the database, Laravel storage, environment file, a manifest, and SHA-256 checksums before pulling the new application image. It migrates before recreating the runtime services and pulls only `app`, `worker`, and `scheduler`; if migration or recreation fails, inspect the logs and use the recorded backup before attempting a rollback.
 
 ## CI and releases
 
 - **CI gate** validates changed areas with frontend builds, PHP tests and Pint, SQLite/MariaDB integration checks, container and Compose validation, installer checks, and backup/restore tests.
 - **Security gate** runs secret scanning on every pull request and `master` push, plus dependency audits and Semgrep SAST for the relevant changes.
-- **Tagged releases** matching `v0.*.*` repeat release validation, publish GHCR images with provenance and an SBOM, smoke-test the immutable image, run container security checks, and publish the deployment bundle with a SHA-256 checksum.
+- **Tagged releases** matching `v0.*.*` repeat the PHP 8.4/8.5 validation matrix, publish multi-platform GHCR images with provenance and an SBOM, smoke-test the immutable image, run container security checks, and publish the deployment bundle with a SHA-256 checksum.
 
 See the [release guide](docs/releasing.md) for the maintainer release procedure.
 

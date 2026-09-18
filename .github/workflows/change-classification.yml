@@ -76,12 +76,16 @@ jobs:
               - 'resources/js/**'
               - 'vite.config.*'
             infrastructure:
+              - '.dockerignore'
               - '.env.example'
               - '.env.docker.example'
               - 'Caddyfile'
               - 'Dockerfile'
               - 'compose*.yml'
+              - 'docker/**'
               - '.php-version'
+              - 'docs/releasing.md'
+              - 'docs/self-hosting.md'
               - 'docker-vhost.conf'
               - 'install.sh'
             source:

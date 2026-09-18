@@ -45,7 +45,7 @@ class InstallApplication extends Command
         }
 
         if (! app()->runningUnitTests()) {
-            $this->call('storage:link');
+            $this->call('storage:link', ['--force' => true]);
             Artisan::call('optimize:clear');
             Artisan::call('config:cache');
             Artisan::call('route:cache');
