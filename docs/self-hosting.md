@@ -1,6 +1,6 @@
 # Self-hosting
 
-VersionTracker is distributed as a versioned Docker image, a Docker deployment bundle, and a prepared native bundle. Install a concrete GitHub release tag such as `v0.1.2`; do not substitute `latest` in a production deployment.
+VersionTracker is distributed as a versioned Docker image, a Docker deployment bundle, and a prepared native bundle. Install a concrete GitHub release tag such as `v0.2.0`; do not substitute `latest` in a production deployment.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ VersionTracker is distributed as a versioned Docker image, a Docker deployment b
 Download the exact deployment bundle and verify its checksum before unpacking it:
 
 ```bash
-VERSION=v0.1.2
+VERSION=v0.2.0
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz"
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz.sha256"
 sha256sum --check "versiontracker-deploy-${VERSION}.tar.gz.sha256"
@@ -33,7 +33,7 @@ Supply all configuration options and pass only the administrator password over s
 
 ```bash
 printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
-  --version v0.1.2 \
+  --version v0.2.0 \
   --mode proxy \
   --port 8080 \
   --url https://tracker.example.com \
@@ -54,7 +54,7 @@ Named instances are stored below the selected base directory and use isolated Co
 ./install.sh install \
   --instance staging \
   --base-dir /opt/versiontracker \
-  --version v0.1.2 \
+  --version v0.2.0 \
   --mode proxy \
   --port 18080 \
   --url https://staging.tracker.example.com
@@ -62,7 +62,7 @@ Named instances are stored below the selected base directory and use isolated Co
 ./install.sh install \
   --instance production \
   --base-dir /opt/versiontracker \
-  --version v0.1.2 \
+  --version v0.2.0 \
   --mode proxy \
   --port 18081 \
   --url https://tracker.example.com
@@ -132,7 +132,7 @@ The command creates the backup first, changes `VERSION`, pulls only the new appl
 The native release archive already contains `vendor/`, Laravel package manifests, Filament assets, and `public/build/`. Verify and unpack it on a host with PHP 8.4.1 or newer; Composer and Node.js are not needed on the target host:
 
 ```bash
-VERSION=v0.1.2
+VERSION=v0.2.0
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz"
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz.sha256"
 sha256sum --check "versiontracker-native-${VERSION}.tar.gz.sha256"

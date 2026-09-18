@@ -9,8 +9,8 @@ Releases are deliberately tag-driven. A maintainer creates a concrete `v0.x.y` t
 3. Create and push an annotated release tag:
 
    ```bash
-   git tag -a v0.1.0 -m "VersionTracker v0.1.0"
-   git push origin v0.1.0
+   git tag -a v0.2.0 -m "VersionTracker v0.2.0"
+   git push origin v0.2.0
    ```
 
 4. Verify the Release workflow. It repeats the complete PHP 8.4/8.5 release validation matrix, builds and extracts the native bundle without development dependencies, installs it with SQLite, checks the web and admin routes, builds and publishes `linux/amd64` and `linux/arm64` container images with provenance and an SBOM, validates the immutable image by running the complete Compose stack with MariaDB, and creates the GitHub Release only after both paths pass.

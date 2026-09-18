@@ -125,7 +125,7 @@ The demo profile is intended for local evaluation only. Generic `php artisan db:
 Tagged releases also provide a prepared native bundle with Composer dependencies and compiled frontend assets. It requires PHP 8.4.1 or newer and a configured web server, but no Docker, Composer, or Node.js on the target host:
 
 ```bash
-VERSION=v0.1.2
+VERSION=v0.2.0
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz"
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-native-${VERSION}.tar.gz.sha256"
 sha256sum --check "versiontracker-native-${VERSION}.tar.gz.sha256"
@@ -194,7 +194,7 @@ Every `v0.x.y` GitHub release publishes a multi-platform container image (`linux
 Download the exact bundle and checksum from a GitHub Release, verify the archive, and unpack it:
 
 ```bash
-VERSION=v0.1.2
+VERSION=v0.2.0
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz"
 curl -fsSLO "https://github.com/soerennb/version-tracker/releases/download/${VERSION}/versiontracker-deploy-${VERSION}.tar.gz.sha256"
 sha256sum --check "versiontracker-deploy-${VERSION}.tar.gz.sha256"
@@ -217,7 +217,7 @@ For unattended installations, select a concrete version and pipe the administrat
 
 ```bash
 printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
-  --version v0.1.2 \
+  --version v0.2.0 \
   --mode proxy \
   --port 8080 \
   --admin-name 'Administrator' \
@@ -235,7 +235,7 @@ Use proxy mode and a unique instance name for staging, production, or customer e
 ./install.sh install \
   --instance staging \
   --base-dir /opt/versiontracker \
-  --version v0.1.2 \
+  --version v0.2.0 \
   --mode proxy \
   --port 18080 \
   --url https://staging.tracker.example.com
@@ -243,7 +243,7 @@ Use proxy mode and a unique instance name for staging, production, or customer e
 ./install.sh list --base-dir /opt/versiontracker
 ./install.sh status --instance staging --base-dir /opt/versiontracker
 ./install.sh backup --instance staging --base-dir /opt/versiontracker
-./install.sh update --instance staging --base-dir /opt/versiontracker --version v0.1.3 --yes
+./install.sh update --instance staging --base-dir /opt/versiontracker --version v0.2.0 --yes
 ```
 
 Each named instance gets its own environment file, MariaDB data, application storage, Compose project, cache prefix, session cookie, and backup directory. The proxy should route `staging.tracker.example.com` to `127.0.0.1:18080`; choose another host port for every additional instance. Caddy mode remains a single host-wide installation because it owns ports 80 and 443.
@@ -252,7 +252,7 @@ In Caddy mode, ports 80 and 443 must be available and DNS must already point to 
 
 ```bash
 printf '%s\n' 'choose-a-long-unique-password' | ./install.sh install \
-  --version v0.1.2 \
+  --version v0.2.0 \
   --mode proxy \
   --port 8080 \
   --url https://tracker.example.com \
