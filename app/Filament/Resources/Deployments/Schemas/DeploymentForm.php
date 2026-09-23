@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Deployments\Schemas;
 
+use App\Models\ComponentVersion;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -14,6 +15,10 @@ class DeploymentForm
     {
         return $schema
             ->components([
+                Select::make('customization_version_id')
+                    ->label(__('filament.composition.customization'))
+                    ->options(fn (): array => ComponentVersion::query()->whereHas('component', fn ($query) => $query->where('kind', 'customization'))->with('component.customer')->get()->mapWithKeys(fn ($version): array => [$version->id => $version->component->customer?->name.' · '.$version->component->name.' '.$version->version_label])->all())
+                    ->searchable(),
                 Select::make('software_id')
                     ->label(__('filament.deployments.fields.software'))
                     ->relationship('software', 'name')

@@ -22,6 +22,8 @@ class EnvironmentResource extends JsonResource
             'is_production' => $this->is_production,
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
+            'customer_id' => $this->customer_id,
+            'customer' => CustomerResource::make($this->whenLoaded('customer')),
             'latest_successful_deployment' => DeploymentResource::make($this->whenLoaded('latestSuccessfulDeployment')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

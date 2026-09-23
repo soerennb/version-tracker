@@ -33,6 +33,7 @@ class VersionResource extends JsonResource
             'lts_date' => $this->lts_date?->toDateString(),
             'support_status' => $this->support_status?->value,
             'support_status_label' => $this->support_status?->label(),
+            'composition' => $this->composition ? ReleaseCompositionResource::make($this->composition) : null,
             'readiness' => $readiness,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

@@ -32,7 +32,7 @@ class VersionsTable
         return $table
             ->defaultSort('release_date', 'desc')
             ->modifyQueryUsing(fn ($query) => $query
-                ->with(['fileAttachments', 'textContents', 'vulnerabilities', 'software.dependenciesOutgoing.dependsOnSoftware', 'software.dependenciesOutgoing.minVersion', 'software.dependenciesOutgoing.maxVersion'])
+                ->with(['fileAttachments', 'textContents', 'vulnerabilities', 'composition.baselineVersion', 'composition.activeEformsSdkVersion', 'software.dependenciesOutgoing.dependsOnSoftware', 'software.dependenciesOutgoing.minVersion', 'software.dependenciesOutgoing.maxVersion'])
                 ->withCount(['vulnerabilities as security_blockers_count' => fn ($query) => $query
                     ->where('status', VulnerabilityStatus::OPEN)
                     ->whereIn('severity', $blockingSeverities)]))
@@ -46,6 +46,20 @@ class VersionsTable
                     ->searchable()
                     ->badge()
                     ->color('info'),
+                TextColumn::make('composition.baselineVersion.version_label')->label('Baseline')->placeholder('Not tracked'),
+                TextColumn::make('composition.activeEformsSdkVersion.version_label')->label('eForms SDK')->placeholder('Not tracked'),
+                TextColumn::make('ted_status')
+                    ->label('TED')
+                    ->state(fn (Version $record): ?string => $record->composition?->activeEformsSdkVersion
+                        ? $record->composition->activeEformsSdkVersion->ted_acceptance_status
+                        : null)
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): ?string => $state ? __('filament.composition.ted_'.$state) : null)
+                    ->color(fn (?string $state): string => match ($state) {
+                        'accepted' => 'success',
+                        'not_accepted' => 'danger',
+                        default => 'gray',
+                    }),
                 TextColumn::make('release_date')
                     ->label(__('filament.versions.fields.release_date'))
                     ->date('d.m.Y')

@@ -7,6 +7,7 @@ use App\Enums\SoftwareStatus;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
 class SoftwareForm
@@ -47,6 +48,9 @@ class SoftwareForm
                     ->label(__('filament.software.fields.github_repo_url'))
                     ->url()
                     ->maxLength(255),
+                Toggle::make('tracks_release_composition')
+                    ->label(__('filament.composition.track_releases'))
+                    ->helperText(__('filament.composition.track_releases_help')),
             ]);
     }
 }

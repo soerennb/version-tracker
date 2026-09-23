@@ -22,7 +22,7 @@ class EnvironmentController extends Controller
         $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
         $environments = Environment::query()
-            ->with('latestSuccessfulDeployment.version')
+            ->with(['customer', 'latestSuccessfulDeployment.version'])
             ->when($request->filled('is_active'), fn ($query) => $query->where('is_active', $request->boolean('is_active')))
             ->when($request->filled('is_production'), fn ($query) => $query->where('is_production', $request->boolean('is_production')))
             ->when($search = $request->string('search')->toString(), fn ($query) => $query->where(fn ($query) => $query
@@ -47,7 +47,7 @@ class EnvironmentController extends Controller
 
     public function show(Environment $environment): JsonResponse
     {
-        return EnvironmentResource::make($environment->load('latestSuccessfulDeployment.version'))->response();
+        return EnvironmentResource::make($environment->load(['customer', 'latestSuccessfulDeployment.version']))->response();
     }
 
     public function update(UpdateEnvironmentRequest $request, Environment $environment): JsonResponse

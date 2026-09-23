@@ -57,6 +57,7 @@ class VersionResource extends Resource
                 'software.dependenciesOutgoing.maxVersion',
                 'textContents',
                 'vulnerabilities',
+                'composition.supportedInterfaces.componentVersion.component',
             ]);
     }
 

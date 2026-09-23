@@ -162,7 +162,16 @@
         "source": "Quelle öffnen",
         "provenance": "Provenienz",
         "sourceRelease": "GitHub Release",
-        "sourceTag": "GitHub Tag"
+        "sourceTag": "GitHub Tag",
+        "compositionEyebrow": "Feste Release-Kombination",
+        "composition": "Enthaltene Versionen",
+        "baseline": "Baseline",
+        "eformsComponent": "eForms-Komponente",
+        "activeEformsSdk": "Genutztes eForms-SDK",
+        "supportedInterfaces": "Unterstützte Schnittstellenversionen",
+        "tedChecked": "TED-Status manuell geprüft am",
+        "notTracked": "Keine Kombination erfasst.",
+        "ted": { "accepted": "Laut manueller Prüfung von TED akzeptiert", "not_accepted": "Laut manueller Prüfung von TED nicht akzeptiert", "unknown": "TED-Status nicht geprüft" }
     },
     "compare": {
         "title": "Versionsvergleich",

@@ -71,6 +71,10 @@ class ProductController extends Controller
                     'textContents' => fn ($query) => $query->latest(),
                     'fileAttachments',
                     'vulnerabilities' => fn ($query) => $query->whereNot('status', 'false_positive'),
+                    'composition.baselineVersion.component',
+                    'composition.eformsComponentVersion.component',
+                    'composition.activeEformsSdkVersion.component',
+                    'composition.supportedInterfaces.componentVersion.component',
                 ])
                 ->latest('release_date'),
             'dependenciesOutgoing' => fn ($query) => $query

@@ -91,6 +91,7 @@ class PublicProductDetailResource extends JsonResource
                     'verification_status' => $attachment->verification_status,
                     'download_url' => route('public.download', [$version, $attachment], false),
                 ])->values(),
+            'composition' => $version->composition ? ReleaseCompositionResource::make($version->composition) : null,
         ];
 
         if ($includeSecurity) {

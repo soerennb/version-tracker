@@ -162,7 +162,16 @@
         "source": "Open source",
         "provenance": "Provenance",
         "sourceRelease": "GitHub release",
-        "sourceTag": "GitHub tag"
+        "sourceTag": "GitHub tag",
+        "compositionEyebrow": "Fixed release combination",
+        "composition": "Included versions",
+        "baseline": "Baseline",
+        "eformsComponent": "eForms component",
+        "activeEformsSdk": "eForms SDK in use",
+        "supportedInterfaces": "Supported interface versions",
+        "tedChecked": "TED status checked manually on",
+        "notTracked": "No combination recorded.",
+        "ted": { "accepted": "Accepted by TED per manual check", "not_accepted": "Not accepted by TED per manual check", "unknown": "TED status not checked" }
     },
     "compare": {
         "title": "Version comparison",

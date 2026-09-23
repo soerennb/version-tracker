@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Version extends Model
 {
@@ -50,6 +51,11 @@ class Version extends Model
     public function software(): BelongsTo
     {
         return $this->belongsTo(Software::class);
+    }
+
+    public function composition(): HasOne
+    {
+        return $this->hasOne(ReleaseComposition::class);
     }
 
     public function creator(): BelongsTo

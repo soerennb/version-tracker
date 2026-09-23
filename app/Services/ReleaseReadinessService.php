@@ -30,6 +30,10 @@ class ReleaseReadinessService
             'vulnerabilities',
             'sbomDocuments.findings',
             'releaseExceptions.owner',
+            'composition.supportedInterfaces',
+            'composition.baselineVersion.component',
+            'composition.eformsComponentVersion.component',
+            'composition.activeEformsSdkVersion.component',
         ]);
 
         $governance = app(RuntimeSettings::class)->governance();
@@ -37,6 +41,7 @@ class ReleaseReadinessService
         $sbom = $this->sbomCheck($version);
         $checks = [
             $this->contentCheck($version),
+            ...($version->software?->tracks_release_composition ? [$this->compositionCheck($version)] : []),
             ...($governance->require_security_clearance ? [$security] : []),
             ...($governance->require_dependency_validation ? [$this->dependencyCheck($version)] : []),
             ...($governance->require_attachments ? [$this->attachmentsCheck($version)] : []),
@@ -223,6 +228,16 @@ class ReleaseReadinessService
             'passed' => ! $hasInvalidDependency,
             'code' => 'invalid_dependencies',
             'label' => __('versions.readiness.invalid_dependencies'),
+        ];
+    }
+
+    /** @return array{passed:bool,code:string,label:string} */
+    protected function compositionCheck(Version $version): array
+    {
+        return [
+            'passed' => app(ReleaseCompositionService::class)->isComplete($version),
+            'code' => 'missing_release_composition',
+            'label' => __('versions.readiness.missing_release_composition'),
         ];
     }
 

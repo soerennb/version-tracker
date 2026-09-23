@@ -33,6 +33,7 @@ class Software extends Model
         'license_type',
         'compliance_status',
         'github_repo_url',
+        'tracks_release_composition',
     ];
 
     /**
@@ -45,6 +46,7 @@ class Software extends Model
             'compliance_status' => ComplianceStatus::class,
             'last_release_date' => 'date',
             'deleted_at' => 'datetime',
+            'tracks_release_composition' => 'boolean',
         ];
     }
 

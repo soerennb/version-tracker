@@ -46,6 +46,7 @@ class UpdateSoftwareRequest extends FormRequest
             'license_type' => ['nullable', 'string', 'max:255'],
             'compliance_status' => ['required', Rule::enum(ComplianceStatus::class)],
             'github_repo_url' => ['nullable', 'url', 'max:255'],
+            'tracks_release_composition' => ['sometimes', 'boolean'],
         ];
     }
 }
