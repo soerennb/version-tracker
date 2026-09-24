@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\ReleaseCompositionResource;
 use App\Models\SoftwareDependency;
 use App\Models\Version;
 use Illuminate\Support\Collection;
@@ -13,8 +14,8 @@ class VersionComparisonService
      */
     public function compare(Version $left, Version $right): array
     {
-        $left->loadMissing(['software', 'textContents', 'fileAttachments', 'vulnerabilities']);
-        $right->loadMissing(['software', 'textContents', 'fileAttachments', 'vulnerabilities']);
+        $left->loadMissing(['software', 'textContents', 'fileAttachments', 'vulnerabilities', 'composition.baselineVersion.component', 'composition.eformsComponentVersion.component', 'composition.activeEformsSdkVersion.component', 'composition.supportedInterfaces.componentVersion.component']);
+        $right->loadMissing(['software', 'textContents', 'fileAttachments', 'vulnerabilities', 'composition.baselineVersion.component', 'composition.eformsComponentVersion.component', 'composition.activeEformsSdkVersion.component', 'composition.supportedInterfaces.componentVersion.component']);
 
         $leftDependencies = $this->dependenciesFor($left);
         $rightDependencies = $this->dependenciesFor($right);
@@ -75,6 +76,7 @@ class VersionComparisonService
                     'cvss_score' => $vulnerability->cvss_score,
                 ])->values(),
             'dependencies' => $dependencies->map(fn (SoftwareDependency $dependency): array => $this->dependencyPayload($dependency))->values(),
+            'composition' => $version->composition ? ReleaseCompositionResource::make($version->composition)->resolve() : null,
         ];
     }
 

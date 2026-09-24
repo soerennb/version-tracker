@@ -19,6 +19,7 @@ return [
         'missing_attachments' => 'Kein Release-Anhang hochgeladen',
         'missing_lifecycle' => 'Kein Support-, LTS- oder EOL-Lifecycle gesetzt',
         'missing_sbom' => 'Keine verarbeitete SBOM für dieses Release hochgeladen',
+        'missing_release_composition' => 'Baseline, eForms-Komponente und genutztes SDK fehlen oder sind nicht vollständig zugeordnet',
         'stale_sbom' => 'Die letzte SBOM ist älter als das konfigurierte Aktualitätsfenster',
         'blocking_component_findings' => 'Blockierende Schwachstellen in SBOM-Komponenten gefunden',
     ],

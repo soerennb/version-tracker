@@ -2,18 +2,23 @@
 
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ComponentVersionController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\EnvironmentController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\FileAttachmentController;
 use App\Http\Controllers\Api\ImpactAnalysisController;
+use App\Http\Controllers\Api\InstalledReleaseController;
 use App\Http\Controllers\Api\InvitationController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ReleaseCompositionController;
 use App\Http\Controllers\Api\SbomController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\SoftwareDependencyController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\TextContentController;
+use App\Http\Controllers\Api\TrackedComponentController;
 use App\Http\Controllers\Api\VersionController;
 use App\Http\Controllers\Api\VulnerabilityController;
 use App\Http\Controllers\Public\CompareController;
@@ -72,6 +77,12 @@ Route::middleware(['throttle:api', 'auth:sanctum', EnforceApiTokenPermissions::c
     Route::get('softwares/{software}/versions', [SoftwareController::class, 'versions']);
 
     Route::apiResource('environments', EnvironmentController::class)->only(['index', 'store', 'show', 'update']);
+    Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update']);
+    Route::apiResource('tracked-components', TrackedComponentController::class)->only(['index', 'store', 'update']);
+    Route::apiResource('component-versions', ComponentVersionController::class)->only(['index', 'store', 'update']);
+    Route::get('versions/{version}/composition', [ReleaseCompositionController::class, 'show']);
+    Route::put('versions/{version}/composition', [ReleaseCompositionController::class, 'update']);
+    Route::get('environments/{environment}/installed/{software}', [InstalledReleaseController::class, 'show']);
 
     Route::apiResource('deployments', DeploymentController::class)->only(['index', 'store', 'show', 'update']);
     Route::post('deployments/{deployment}/approve', [DeploymentController::class, 'approve']);

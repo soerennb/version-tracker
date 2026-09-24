@@ -14,6 +14,7 @@ class EnvironmentsTable
         return $table
             ->defaultSort('sort_order')
             ->columns([
+                TextColumn::make('customer.name')->label('Customer')->placeholder('Unassigned'),
                 TextColumn::make('name')
                     ->label(__('filament.environments.fields.name'))
                     ->searchable()

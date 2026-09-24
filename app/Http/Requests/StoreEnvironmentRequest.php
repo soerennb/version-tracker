@@ -31,6 +31,7 @@ class StoreEnvironmentRequest extends FormRequest
             'is_production' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0', 'max:10000'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
         ];
     }
 }

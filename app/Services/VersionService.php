@@ -81,6 +81,7 @@ class VersionService
 
     public function approve(Version $version, bool $override = false, ?string $overrideReason = null): Version
     {
+        $this->assertReleaseComposition($version);
         if (! $version->status?->isDraft() || ! $version->approval_status?->isPending()) {
             throw ValidationException::withMessages([
                 'version' => __('versions.governance.approve_requires_pending'),
@@ -151,6 +152,8 @@ class VersionService
             return $version;
         }
 
+        $this->assertReleaseComposition($version);
+
         $version->forceFill([
             'status' => VersionStatus::PUBLISHED,
             'rejection_reason' => null,
@@ -216,5 +219,12 @@ class VersionService
             'current_version' => $latestPublished?->version_number,
             'last_release_date' => $latestPublished?->release_date,
         ])->save();
+    }
+
+    private function assertReleaseComposition(Version $version): void
+    {
+        if (! app(ReleaseCompositionService::class)->isComplete($version)) {
+            throw ValidationException::withMessages(['version' => __('versions.readiness.missing_release_composition')]);
+        }
     }
 }

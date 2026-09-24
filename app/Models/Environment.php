@@ -6,6 +6,7 @@ use App\Enums\DeploymentStatus;
 use Database\Factories\EnvironmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -24,6 +25,7 @@ class Environment extends Model
         'is_production',
         'is_active',
         'sort_order',
+        'customer_id',
     ];
 
     /**
@@ -41,6 +43,11 @@ class Environment extends Model
     public function deployments(): HasMany
     {
         return $this->hasMany(Deployment::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function latestSuccessfulDeployment(): HasOne

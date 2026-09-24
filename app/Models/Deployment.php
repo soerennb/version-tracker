@@ -38,6 +38,7 @@ class Deployment extends Model
         'result',
         'relation_type',
         'related_deployment_id',
+        'customization_version_id',
     ];
 
     /**
@@ -64,6 +65,11 @@ class Deployment extends Model
     public function version(): BelongsTo
     {
         return $this->belongsTo(Version::class);
+    }
+
+    public function customizationVersion(): BelongsTo
+    {
+        return $this->belongsTo(ComponentVersion::class, 'customization_version_id');
     }
 
     public function environment(): BelongsTo

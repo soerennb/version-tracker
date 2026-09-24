@@ -27,7 +27,7 @@ class DeploymentController extends Controller
         $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
         $deployments = Deployment::query()
-            ->with(['software', 'version', 'environment', 'creator', 'approver', 'executor'])
+            ->with(['software', 'version.composition.baselineVersion.component', 'version.composition.eformsComponentVersion.component', 'version.composition.activeEformsSdkVersion.component', 'version.composition.supportedInterfaces.componentVersion.component', 'environment.customer', 'customizationVersion.component', 'creator', 'approver', 'executor'])
             ->when($request->filled('software_id'), fn ($query) => $query->where('software_id', $request->integer('software_id')))
             ->when($request->filled('version_id'), fn ($query) => $query->where('version_id', $request->integer('version_id')))
             ->when($request->filled('environment_id'), fn ($query) => $query->where('environment_id', $request->integer('environment_id')))
@@ -61,6 +61,12 @@ class DeploymentController extends Controller
             'executor',
             'relatedDeployment.version',
             'events.actor',
+            'customizationVersion.component',
+            'version.composition.baselineVersion.component',
+            'version.composition.eformsComponentVersion.component',
+            'version.composition.activeEformsSdkVersion.component',
+            'version.composition.supportedInterfaces.componentVersion.component',
+            'environment.customer',
         ]))->response();
     }
 

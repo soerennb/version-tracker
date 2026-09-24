@@ -62,6 +62,10 @@ class EnforceApiTokenPermissions
                 }
             } else {
                 $ability = match ($controller) {
+                    'CustomerController' => $action === 'index' ? 'view_environments' : (in_array($action, ['store', 'update'], true) ? 'manage_environments' : null),
+                    'TrackedComponentController', 'ComponentVersionController' => $action === 'index' ? 'view_versions' : (in_array($action, ['store', 'update'], true) ? 'edit_versions' : null),
+                    'ReleaseCompositionController' => $action === 'show' ? 'view_versions' : ($action === 'update' ? 'edit_versions' : null),
+                    'InstalledReleaseController' => $action === 'show' ? 'view_deployments' : null,
                     'AuditLogController' => 'view_audit_logs','ExportController' => match ($action) {
                         'compliance' => 'export_compliance',
                         'deploymentsCsv' => 'export_deployments',

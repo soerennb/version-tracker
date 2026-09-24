@@ -33,6 +33,7 @@ class RollbackDeploymentRequest extends FormRequest
             'maintenance_window_end' => ['nullable', 'date', 'after_or_equal:maintenance_window_start'],
             'external_reference' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:10000'],
+            'customization_version_id' => ['nullable', 'integer', 'exists:component_versions,id'],
         ];
     }
 }

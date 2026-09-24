@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Environments\Schemas;
 
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -13,6 +14,10 @@ class EnvironmentForm
     {
         return $schema
             ->components([
+                Select::make('customer_id')
+                    ->label('Customer')
+                    ->relationship('customer', 'name')
+                    ->searchable(),
                 TextInput::make('name')
                     ->label(__('filament.environments.fields.name'))
                     ->required()

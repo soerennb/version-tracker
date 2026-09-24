@@ -24,6 +24,7 @@ class SoftwareResource extends JsonResource
             'compliance_status' => $this->compliance_status?->value,
             'compliance_status_label' => $this->compliance_status?->label(),
             'github_repo_url' => $this->github_repo_url,
+            'tracks_release_composition' => $this->tracks_release_composition,
             'versions_count' => $this->when(isset($this->versions_count), $this->versions_count),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

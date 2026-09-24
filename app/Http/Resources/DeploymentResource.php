@@ -56,6 +56,8 @@ class DeploymentResource extends JsonResource
             'result' => $this->result,
             'relation_type' => $this->relation_type,
             'related_deployment_id' => $this->related_deployment_id,
+            'customization_version' => $this->customizationVersion ? ComponentVersionResource::make($this->customizationVersion->loadMissing('component')) : null,
+            'release_composition' => $this->version?->composition ? ReleaseCompositionResource::make($this->version->composition) : null,
             'events' => DeploymentEventResource::collection($this->whenLoaded('events')),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

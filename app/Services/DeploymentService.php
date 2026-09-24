@@ -7,6 +7,7 @@ use App\Enums\DeploymentEventType;
 use App\Enums\DeploymentStatus;
 use App\Enums\VersionStatus;
 use App\Helpers\AuditHelper;
+use App\Models\ComponentVersion;
 use App\Models\Deployment;
 use App\Models\DeploymentEvent;
 use App\Models\Environment;
@@ -45,6 +46,7 @@ class DeploymentService
 
             $this->assertVersionBelongsToSoftware($version, $softwareId);
             $this->assertVersionEligible($version, $environment);
+            $this->assertCustomization($version, $environment, $data['customization_version_id'] ?? null);
             $this->assertNoActiveDeployment($softwareId, $environment->id);
 
             $deployment = Deployment::query()->create([
@@ -60,6 +62,7 @@ class DeploymentService
                 'external_reference' => $data['external_reference'] ?? null,
                 'source' => $this->source(),
                 'notes' => $data['notes'] ?? null,
+                'customization_version_id' => $data['customization_version_id'] ?? null,
                 'relation_type' => $data['relation_type'] ?? null,
                 'related_deployment_id' => $data['related_deployment_id'] ?? null,
             ]);
@@ -106,6 +109,10 @@ class DeploymentService
                 ]);
             }
 
+            if (array_key_exists('customization_version_id', $data)) {
+                $this->assertCustomization($locked->version, $locked->environment, $data['customization_version_id']);
+            }
+
             $before = $locked->toArray();
             $locked->forceFill(Arr::only($data, [
                 'scheduled_at',
@@ -113,6 +120,7 @@ class DeploymentService
                 'maintenance_window_start',
                 'maintenance_window_end',
                 'notes',
+                'customization_version_id',
             ]))->save();
             $after = $locked->fresh()->toArray();
 
@@ -222,6 +230,14 @@ class DeploymentService
             $this->assertVersionBelongsToSoftware($rollbackVersion, (int) $locked->software_id);
             $this->assertVersionEligible($rollbackVersion, $environment);
 
+            $priorCustomization = Deployment::query()
+                ->where('environment_id', $environment->id)
+                ->where('version_id', $rollbackVersion->id)
+                ->where('status', DeploymentStatus::SUCCEEDED)
+                ->orderByDesc('completed_at')
+                ->orderByDesc('id')
+                ->value('customization_version_id');
+
             $result = $this->create([
                 'software_id' => $locked->software_id,
                 'version_id' => $rollbackVersion->id,
@@ -234,6 +250,7 @@ class DeploymentService
                 'notes' => $data['notes'] ?? null,
                 'relation_type' => 'rollback',
                 'related_deployment_id' => $locked->id,
+                'customization_version_id' => $data['customization_version_id'] ?? $priorCustomization,
             ], $actor);
 
             return $result['deployment'];
@@ -478,6 +495,31 @@ class DeploymentService
                 'environment_id' => __('deployments.errors.environment_inactive'),
             ]);
         }
+
+        if ($version->software?->tracks_release_composition && ! $version->composition()->exists()) {
+            throw ValidationException::withMessages(['version_id' => 'The release composition is missing.']);
+        }
+    }
+
+    protected function assertCustomization(Version $version, Environment $environment, mixed $customizationVersionId): void
+    {
+        if (! $version->software?->tracks_release_composition) {
+            if ($customizationVersionId !== null) {
+                throw ValidationException::withMessages(['customization_version_id' => 'This software does not track customization versions.']);
+            }
+
+            return;
+        }
+
+        if ($environment->customer_id === null || $customizationVersionId === null) {
+            throw ValidationException::withMessages(['customization_version_id' => 'A customer and its customization version are required.']);
+        }
+
+        $customization = ComponentVersion::query()->with('component')->find($customizationVersionId);
+        if ($customization?->component?->kind !== 'customization'
+            || (int) $customization->component->customer_id !== (int) $environment->customer_id) {
+            throw ValidationException::withMessages(['customization_version_id' => 'Select a customization version belonging to the environment customer.']);
+        }
     }
 
     protected function assertNoActiveDeployment(int $softwareId, int $environmentId): void
@@ -540,6 +582,11 @@ class DeploymentService
                 'executor',
                 'relatedDeployment.version',
                 'events.actor',
+                'customizationVersion.component',
+                'version.composition.baselineVersion.component',
+                'version.composition.eformsComponentVersion.component',
+                'version.composition.activeEformsSdkVersion.component',
+                'version.composition.supportedInterfaces.componentVersion.component',
             ])
             ->findOrFail($deployment->id);
     }

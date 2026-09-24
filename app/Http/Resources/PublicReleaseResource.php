@@ -79,6 +79,7 @@ class PublicReleaseResource extends JsonResource
                 'source_updated_at' => $source->source_updated_at?->toISOString(),
                 'is_prerelease' => $source->is_prerelease,
             ])->values()),
+            'composition' => $this->composition ? ReleaseCompositionResource::make($this->composition) : null,
         ];
     }
 

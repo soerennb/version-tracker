@@ -19,6 +19,7 @@ return [
         'missing_attachments' => 'No release attachment uploaded',
         'missing_lifecycle' => 'No support, LTS, or EOL lifecycle data set',
         'missing_sbom' => 'No processed SBOM uploaded for this release',
+        'missing_release_composition' => 'Baseline, eForms component and active SDK are missing or incomplete',
         'stale_sbom' => 'The latest SBOM is older than the configured freshness window',
         'blocking_component_findings' => 'Blocking vulnerabilities were found in SBOM components',
     ],

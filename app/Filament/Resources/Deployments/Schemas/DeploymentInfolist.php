@@ -22,6 +22,11 @@ class DeploymentInfolist
                         TextEntry::make('version.version_number')
                             ->label(__('filament.deployments.fields.version'))
                             ->badge(),
+                        TextEntry::make('environment.customer.name')->label('Customer')->placeholder('Unassigned'),
+                        TextEntry::make('version.composition.baselineVersion.version_label')->label('Baseline')->placeholder('Not tracked'),
+                        TextEntry::make('version.composition.eformsComponentVersion.version_label')->label('eForms component')->placeholder('Not tracked'),
+                        TextEntry::make('version.composition.activeEformsSdkVersion.version_label')->label('eForms SDK')->placeholder('Not tracked'),
+                        TextEntry::make('customizationVersion.version_label')->label('Customization')->placeholder('Not tracked'),
                         TextEntry::make('environment.name')
                             ->label(__('filament.deployments.fields.environment'))
                             ->badge(),

@@ -19,6 +19,10 @@ class ReleaseController extends Controller
             'textContents' => fn ($query) => $query->orderBy('language'),
             'fileAttachments' => fn ($query) => $query->where('is_public', true),
             'sources',
+            'composition.baselineVersion.component',
+            'composition.eformsComponentVersion.component',
+            'composition.activeEformsSdkVersion.component',
+            'composition.supportedInterfaces.componentVersion.component',
             'vulnerabilities' => fn ($query) => $query
                 ->whereNot('status', 'false_positive')
                 ->with('fixedVersion:id,version_number'),
