@@ -172,7 +172,7 @@ class ReleaseCompositionWorkflowTest extends TestCase
         $this->actingAs($user);
         Environment::factory()->create();
 
-        $this->get('/admin/installed-releases')->assertOk()->assertSee('Installierter Stand');
+        $this->get('/admin/installed-releases')->assertOk()->assertSee(__('filament.composition.installed_releases'));
     }
 
     public function test_admin_can_open_component_catalog_and_release_editor(): void
