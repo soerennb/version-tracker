@@ -2,7 +2,7 @@
 
 FROM composer:2@sha256:a5f59b9fd2faf31218632be4809dc6491761085e8064c31dc3b84378c48c248b AS composer
 
-FROM php:8.5-cli-bookworm@sha256:2bdeae0060ab682b6ed133513a869168c92d751b81481c7f8c6c34875854d888 AS vendor
+FROM php:8.5.12-cli-bookworm@sha256:d4f6e10eb393de7e3a7a88e8b88e139072dd3ae297f6a5dada8257e6fe32c585 AS vendor
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends git libfreetype6-dev libicu-dev libjpeg62-turbo-dev libonig-dev libpng-dev libzip-dev unzip \
@@ -40,10 +40,10 @@ COPY public ./public
 COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.5-apache-bookworm@sha256:149e8051f063b00f71a9eb4a5779083e6383015702fc1f6139e58dad63b052eb
+FROM php:8.5.12-apache-bookworm@sha256:5e4418695f9b13b75edefaff547125bf6be267e865931731bdd5946461505736
 
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends curl libfreetype6 libicu72 libjpeg62-turbo libonig5 libpng16-16 libzip4 \
+    && apt-get install --yes --no-install-recommends curl libbrotli1 libexpat1 libfreetype6 libicu72 libjpeg62-turbo libonig5 libpng16-16 libzip4 \
     && a2enmod rewrite \
     && printf 'ServerName localhost\n' > /etc/apache2/conf-available/versiontracker-servername.conf \
     && a2enconf versiontracker-servername \

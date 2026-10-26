@@ -64,7 +64,8 @@
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi",
-            "@php artisan filament:upgrade"
+            "@php artisan filament:upgrade",
+            "@assets:permissions"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
@@ -79,7 +80,8 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
-        ]
+        ],
+        "assets:permissions": "@php -r 'foreach ([\"public/css/filament\", \"public/fonts/filament\", \"public/js/filament\"] as $directory) { if (! is_dir($directory)) { continue; } foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS)) as $file) { if ($file->isFile() && ! chmod($file->getPathname(), 0644)) { exit(1); } } }'"
     },
     "extra": {
         "laravel": {
