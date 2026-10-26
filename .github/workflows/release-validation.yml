@@ -30,7 +30,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "24.22.1"
           cache: npm
 
       - name: Install dependencies
@@ -45,8 +45,8 @@ jobs:
           npm run build
           php artisan test
           ./native-install.sh doctor
-          composer audit --no-interaction --abandoned=report
-          npm audit --omit=dev --audit-level=high
+          composer audit --locked --no-interaction --abandoned=report
+          npm audit --package-lock-only --audit-level=high
 
   native-bundle:
     name: Native release bundle
@@ -65,7 +65,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "24.22.1"
           cache: npm
 
       - name: Prepare production runtime assets

@@ -27,7 +27,7 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/fra
     && test -s public/css/filament/filament/app.css \
     && test -s public/js/filament/filament/app.js
 
-FROM node:26-bookworm-slim@sha256:c8fedd782bcd1b68d8a7d1ed2577b5f820eba820871323f605292651ff11e3c6 AS frontend
+FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS frontend
 
 WORKDIR /var/www/html
 
