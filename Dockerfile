@@ -2,7 +2,7 @@
 
 FROM composer:2@sha256:a5f59b9fd2faf31218632be4809dc6491761085e8064c31dc3b84378c48c248b AS composer
 
-FROM php:8.5.12-cli-bookworm@sha256:d4f6e10eb393de7e3a7a88e8b88e139072dd3ae297f6a5dada8257e6fe32c585 AS vendor
+FROM php:8.5.12-cli-bookworm@sha256:104890ada56869090c9cd0ec709fe205834d3e383b46d9995dc16cd6388a9302 AS vendor
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends git libfreetype6-dev libicu-dev libjpeg62-turbo-dev libonig-dev libpng-dev libzip-dev unzip \
@@ -40,7 +40,7 @@ COPY public ./public
 COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.5.12-apache-bookworm@sha256:5e4418695f9b13b75edefaff547125bf6be267e865931731bdd5946461505736
+FROM php:8.5.12-apache-bookworm@sha256:6b401f1bfa88fc9d2ae5c3ff2558f18d0c17c9801718ded725095ea29131f34b
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl libbrotli1 libexpat1 libfreetype6 libicu72 libjpeg62-turbo libonig5 libpng16-16 libzip4 \
