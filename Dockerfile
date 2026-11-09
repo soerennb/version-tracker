@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
-FROM composer:2@sha256:a5f59b9fd2faf31218632be4809dc6491761085e8064c31dc3b84378c48c248b AS composer
+FROM composer:2.11.1@sha256:8de2184c6de224f4689e8f80ed5f5edaf0030b6b8b7839a22a2bcb6722ac87d0 AS composer
 
-FROM php:8.5.12-cli-bookworm@sha256:d4f6e10eb393de7e3a7a88e8b88e139072dd3ae297f6a5dada8257e6fe32c585 AS vendor
+FROM php:8.5.12-cli-bookworm@sha256:050713ce008e2360ea9dc96e1f9a075690132388d917fc3552806f7a7be6f2a0 AS vendor
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends git libfreetype6-dev libicu-dev libjpeg62-turbo-dev libonig-dev libpng-dev libzip-dev unzip \
@@ -27,7 +27,7 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/fra
     && test -s public/css/filament/filament/app.css \
     && test -s public/js/filament/filament/app.js
 
-FROM node:26.12.1-bookworm-slim@sha256:28147155d47dc31abe0a46e0d12b59b2fb3d0a2dcc5dc65fce76a074180b16fe AS frontend
+FROM node:26.13.0-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS frontend
 
 WORKDIR /var/www/html
 
@@ -40,7 +40,7 @@ COPY public ./public
 COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.5.12-apache-bookworm@sha256:5e4418695f9b13b75edefaff547125bf6be267e865931731bdd5946461505736
+FROM php:8.5.12-apache-bookworm@sha256:dbc0a3eb85e639cc8158ae74e83448064473a7fa78e90a1b0dfb7c4ee14497e3
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl libbrotli1 libexpat1 libfreetype6 libicu72 libjpeg62-turbo libonig5 libpng16-16 libzip4 \
