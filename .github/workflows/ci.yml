@@ -131,7 +131,7 @@ jobs:
       needs.changes.outputs.automation == 'true'
     services:
       db:
-        image: mariadb:11.8.8@sha256:24e76fcec8c003a0362d0dd53f4806e7e79458d7fdeaf47437760e19496f5a9c
+        image: mariadb:11.8.9@sha256:c4124d1afa875e47f2892edf26b482fa54f796e2f342d3717a04ca091a22a9bd
         env:
           MARIADB_DATABASE: versiontracker
           MARIADB_USER: versiontracker
@@ -335,7 +335,7 @@ jobs:
           docker compose --env-file .env.docker -f compose.yml -f compose.caddy.yml config --quiet
 
       - name: Validate Caddyfile
-        run: docker run --rm --env CADDY_DOMAIN=example.invalid --env CADDY_EMAIL=ci@example.invalid --volume "$GITHUB_WORKSPACE/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.4@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        run: docker run --rm --env CADDY_DOMAIN=example.invalid --env CADDY_EMAIL=ci@example.invalid --volume "$GITHUB_WORKSPACE/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11.9@sha256:0c2243efcf437ab7f7a978f1027fcf0d4f9be8a75df27b1b3fbc5dbe0ffa8cf0 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
   shell:
     name: Installer script

@@ -4,7 +4,7 @@ services:
       TRUSTED_PROXIES: "*"
 
   caddy:
-    image: ${CADDY_IMAGE:-caddy:2.11.4@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f}
+    image: ${CADDY_IMAGE:-caddy:2.11.9@sha256:0c2243efcf437ab7f7a978f1027fcf0d4f9be8a75df27b1b3fbc5dbe0ffa8cf0}
     depends_on:
       app:
         condition: service_healthy
